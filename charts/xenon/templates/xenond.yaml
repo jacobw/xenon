@@ -22,6 +22,15 @@ spec:
             - {name: XENON_ADDR, value: ":8080"}
             - name: XENON_PROM
               value: "http://prometheus.{{ .Release.Namespace }}.svc.cluster.local:9090"
+            # Credentials for live onboarding (xenond shells out to gnmic, which
+            # reads these GNMIC_* env vars as --username/--password/--skip-verify).
+            - {name: GNMIC_USERNAME, value: {{ .Values.gnmic.username | quote }}}
+            - name: GNMIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentials.existingSecret }}
+                  key: GNMIC_PASSWORD
+            - {name: GNMIC_SKIP_VERIFY, value: "true"}
           ports:
             - {name: http, containerPort: 8080}
           readinessProbe:
