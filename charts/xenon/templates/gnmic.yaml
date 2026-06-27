@@ -48,10 +48,10 @@ data:
         listen: ":9273"
         path: "/metrics"
         event-processors: ["drop-out-queue"]
-    loaders:
-      - type: http
-        url: "http://xenond.{{ .Release.Namespace }}.svc.cluster.local:8080/gnmic/targets"
-        interval: {{ .Values.gnmic.loaderInterval }}
+    loader:
+      type: http
+      url: "http://xenond.{{ .Release.Namespace }}.svc.cluster.local:8080/gnmic/targets"
+      interval: {{ .Values.gnmic.loaderInterval }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -69,10 +69,7 @@ spec:
       containers:
         - name: gnmic
           image: {{ .Values.gnmic.image | quote }}
-          # --watch-config lets gnmic start with no static targets and pick them
-          # up from the http loader (xenond) dynamically; without it gnmic exits
-          # with "no targets found".
-          args: ["--config", "/etc/gnmic/gnmic.yaml", "subscribe", "--watch-config"]
+          args: ["--config", "/etc/gnmic/gnmic.yaml", "subscribe"]
           env:
             - name: GNMIC_PASSWORD
               valueFrom:
