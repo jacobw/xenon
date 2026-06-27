@@ -1,7 +1,9 @@
 # gnmic binary — xenond shells out to it for live onboarding detection.
 FROM debian:bookworm-slim AS gnmic
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates bash \
- && bash -c "$(curl -sL https://get.gnmic.openconfig.net)" \
+ARG GNMIC_VERSION=0.46.0
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates tar gzip \
+ && curl -fsSL "https://github.com/openconfig/gnmic/releases/download/v${GNMIC_VERSION}/gnmic_${GNMIC_VERSION}_Linux_x86_64.tar.gz" -o /tmp/gnmic.tgz \
+ && tar -xzf /tmp/gnmic.tgz -C /usr/local/bin gnmic \
  && /usr/local/bin/gnmic version
 
 # Build a static linux/amd64 xenond binary (templates are go:embed'd, no deps).
