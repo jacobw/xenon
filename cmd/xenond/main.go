@@ -105,6 +105,7 @@ func main() {
 	}
 	alarmStore := alarms.NewStore(store.Alerts)
 	go alarmStore.Run(mc, 15*time.Second)
+	onboardCreds := probe.Creds{Username: os.Getenv("GNMIC_USERNAME"), Password: os.Getenv("GNMIC_PASSWORD")}
 
 	mux := http.NewServeMux()
 
@@ -219,7 +220,7 @@ func main() {
 			render(w, "detect-error", map[string]string{"Err": "Enter a gNMI address (host:port)."})
 			return
 		}
-		res, err := probe.Probe(addr)
+		res, err := probe.Probe(addr, onboardCreds)
 		if err != nil {
 			render(w, "detect-error", map[string]string{"Err": err.Error()})
 			return
@@ -229,7 +230,7 @@ func main() {
 
 	mux.HandleFunc("POST /onboard", func(w http.ResponseWriter, r *http.Request) {
 		addr := strings.TrimSpace(r.FormValue("addr"))
-		res, err := probe.Probe(addr)
+		res, err := probe.Probe(addr, onboardCreds)
 		if err != nil {
 			render(w, "detect-error", map[string]string{"Err": err.Error()})
 			return
