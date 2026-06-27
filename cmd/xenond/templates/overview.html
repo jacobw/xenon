@@ -1,0 +1,52 @@
+{{define "overview"}}{{template "head" .}}
+<h1>Overview <span class="mut">· fleet</span></h1>
+
+<div id="drill"></div>
+
+<div class="tiles">
+  {{range .Tiles}}<div class="tile"><div class="tile-v">{{.Value}}</div><div class="tile-l">{{.Label}}</div></div>{{end}}
+</div>
+
+{{if .Alarms}}
+<h2>Active alarms <span class="mut">· {{len .Alarms}}</span></h2>
+<table>
+  <thead><tr><th>Severity</th><th>Alarm</th><th>Device</th></tr></thead>
+  <tbody>
+  {{range .Alarms}}
+  <tr><td><span class="pill {{sevClass .Severity}}">{{.Severity}}</span></td><td>{{.Summary}}</td><td class="mono"><a href="/device/d-{{.Device}}?tab=alarms">{{.Device}}</a></td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{if .Graphs}}
+<h2>Fleet health <span class="mut">· click a graph to drill in</span></h2>
+<div class="graphs">
+  {{range .Graphs}}
+  <div class="graph clickable" hx-get="/graph?m={{.Key}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
+    <div class="graph-h"><span>{{.Title}}</span><span class="graph-cur">{{.Cur}}</span></div>
+    {{.SVG}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{if .Top}}
+<h2>Top interfaces <span class="mut">· by live traffic · across all devices · click for graph</span></h2>
+<table>
+  <thead><tr><th>Device</th><th>Interface</th><th style="text-align:right">In</th><th style="text-align:right">Out</th></tr></thead>
+  <tbody>
+  {{range .Top}}
+  <tr {{if .DevID}}class="clickable" hx-get="/device/{{.DevID}}/graph?m=port&iface={{.Iface | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML"{{end}}>
+    <td class="mono">{{.Host}}</td>
+    <td class="mono">{{.Iface}}</td>
+    <td style="text-align:right" class="mono">{{.In}}</td>
+    <td style="text-align:right" class="mono">{{.Out}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="mut">Fleet graphs &amp; top interfaces appear once the gnmic collector + Prometheus are running and <span class="mono">XENON_PROM</span> is set.</p>
+{{end}}
+{{template "foot" .}}{{end}}

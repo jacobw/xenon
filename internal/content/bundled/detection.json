@@ -1,0 +1,30 @@
+[
+  {
+    "id": "juniper.ex4100",
+    "priority": 100,
+    "match": { "chassis_mfg_name": "Juniper", "chassis_model": "EX4100" },
+    "platform": { "vendor": "juniper", "family": "ex", "model": "ex4100" },
+    "profile": "juniper.ex4100"
+  },
+  {
+    "id": "juniper.mx304",
+    "priority": 100,
+    "match": { "chassis_mfg_name": "Juniper", "chassis_model": "MX304" },
+    "platform": { "vendor": "juniper", "family": "mx", "model": "mx304" },
+    "profile": "juniper.mx304"
+  },
+  {
+    "id": "juniper.generic",
+    "priority": 50,
+    "match": { "chassis_mfg_name": "Juniper" },
+    "platform": { "vendor": "juniper", "family": "generic", "model": "unknown" },
+    "profile": "openconfig.base"
+  },
+  {
+    "id": "openconfig.generic",
+    "priority": 1,
+    "match": { "supports_models": ["openconfig-interfaces", "openconfig-system"] },
+    "platform": { "vendor": "unknown", "family": "generic", "model": "unknown" },
+    "profile": "openconfig.base"
+  }
+]

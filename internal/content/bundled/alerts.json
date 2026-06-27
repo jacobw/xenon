@@ -1,0 +1,20 @@
+[
+  {
+    "id": "temp-high",
+    "severity": "warning",
+    "summary": "High temperature on {{device}} · {{component_name}} ({{value}} °C)",
+    "expr": "components_component_state_temperature_instant > 45"
+  },
+  {
+    "id": "interface-flapping",
+    "severity": "warning",
+    "summary": "{{interface_name}} on {{device}} has flapped {{value}} times",
+    "expr": "interfaces_interface_state_counters_carrier_transitions > 10"
+  },
+  {
+    "id": "cpu-high",
+    "severity": "critical",
+    "summary": "High CPU on {{device}} ({{value}} %)",
+    "expr": "(100 - system_cpus_cpu_state_idle_instant) > 80"
+  }
+]

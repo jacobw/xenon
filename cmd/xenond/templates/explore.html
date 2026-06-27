@@ -1,0 +1,29 @@
+{{define "explore"}}{{template "head" .}}
+<h1>Explore <span class="mut">· multi-device · group by label</span></h1>
+
+<form id="ctrl" class="ctrl" hx-get="/explore/g" hx-target="#eg" hx-swap="innerHTML" hx-trigger="change" hx-include="#ctrl">
+  <label>metric
+    <select class="inp" name="m">{{$m := .M}}{{range .Metrics}}<option value="{{.Key}}" {{if eq .Key $m}}selected{{end}}>{{.Label}}</option>{{end}}</select>
+  </label>
+  <label>group by
+    <select class="inp" name="by">{{$by := .By}}{{range .GroupBys}}<option value="{{.Key}}" {{if eq .Key $by}}selected{{end}}>{{.Label}}</option>{{end}}</select>
+  </label>
+  <label>range
+    <select class="inp" name="r">{{$r := .R}}{{range .Ranges}}<option value="{{.}}" {{if eq . $r}}selected{{end}}>{{.}}</option>{{end}}</select>
+  </label>
+</form>
+
+<div id="eg" hx-get="/explore/g?m={{.M}}&by={{.By}}&r={{.R}}" hx-trigger="load" hx-swap="innerHTML"></div>
+{{template "foot" .}}{{end}}
+
+{{define "explore-graph"}}
+<div class="card" style="margin-top:8px">
+  <div class="graph-h" style="font-size:14px"><span>{{.Title}} <span class="mut">· by {{.By}} · {{.R}} · {{.Count}} series</span></span></div>
+  <div class="bigchart">{{.SVG}}</div>
+  {{if .Series}}
+  <div class="legend">
+    {{range .Series}}<span class="leg"><span class="sw" style="background:{{.Color}}"></span>{{.Label}} <span class="mut">{{.Cur}}</span></span>{{end}}
+  </div>
+  {{else}}<p class="mut">No data for this selection yet — Prometheus may need more history, or the label doesn't apply to this metric.</p>{{end}}
+</div>
+{{end}}

@@ -1,0 +1,84 @@
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · xenon</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--fg:#e6e9ef;--mut:#8b93a3;--accent:#5b9dff;--ok:#3fb950;--warn:#d29922;--bad:#f85149}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{display:flex;align-items:baseline;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header .logo{font-weight:700;letter-spacing:.5px;font-size:16px}
+  header .tag{color:var(--mut);font-size:12px}
+  main{max-width:1040px;margin:0 auto;padding:24px}
+  h1{font-size:18px;margin:0 0 16px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin:26px 0 10px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1c2029}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.ok{background:rgba(63,185,80,.15);color:var(--ok)}
+  .pill.warn{background:rgba(210,153,34,.15);color:var(--warn)}
+  .pill.bad{background:rgba(248,81,73,.15);color:var(--bad)}
+  .mut{color:var(--mut)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .card h3{margin:0 0 12px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;margin:0}
+  .kv dt{color:var(--mut)}
+  .kv dd{margin:0}
+  pre{background:#0b0d12;border:1px solid var(--line);border-radius:8px;padding:14px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .big{font-size:22px;font-weight:700}
+  .drop{color:var(--warn)}
+  .back{font-size:13px;margin:0 0 4px}
+  .graphs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .graph{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 12px 6px}
+  .graph-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mut);margin-bottom:4px}
+  .graph-cur{color:var(--fg);font-weight:700;font-size:15px}
+  .spark{display:block;width:100%;height:64px}
+  .btn{background:var(--accent);color:#04122e;border:none;border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn:hover{filter:brightness(1.08)}
+  .inp{background:#0b0d12;border:1px solid var(--line);border-radius:6px;color:var(--fg);padding:8px 10px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .clickable{cursor:pointer}
+  .graph.clickable:hover{border-color:var(--accent)}
+  tr.clickable:hover{background:#1c2029}
+  .drill-card{margin-bottom:18px}
+  .drill-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .drill-title{font-weight:700;font-size:15px}
+  .ranges{display:flex;gap:6px}
+  .rbtn{cursor:pointer;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:3px 9px}
+  .rbtn:hover{color:var(--fg)}
+  .rbtn.on{background:var(--accent);color:#04122e;border-color:var(--accent);font-weight:600}
+  .bigchart .spark{height:220px;background:#0b0d12;border:1px solid var(--line);border-radius:6px}
+  .nav{display:flex;gap:4px;margin-left:8px}
+  .nav a{color:var(--mut);font-size:13px;padding:4px 10px;border-radius:6px}
+  .nav a:hover{color:var(--fg);background:#1c2029;text-decoration:none}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .tile-v{font-size:26px;font-weight:700}
+  .tile-l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .pill.mut{background:#262b36;color:var(--mut)}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:6px 0 18px}
+  .tab{padding:8px 14px;color:var(--mut);font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--fg);text-decoration:none}
+  .tab.on{color:var(--fg);border-bottom-color:var(--accent);font-weight:600}
+  .ctrl{display:flex;gap:18px;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap}
+  .ctrl label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
+  .ctrl select{min-width:160px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px}
+  .leg{font-size:12px;display:flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:2px;display:inline-block}
+</style>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+<header><span class="logo">xenon</span><nav class="nav"><a href="/">Overview</a><a href="/devices">Devices</a><a href="/explore">Explore</a><a href="/alarms">Alarms</a><a href="/admin">Admin</a></nav><span class="tag" style="margin-left:auto">gNMI / OpenConfig monitoring · prototype</span></header>
+<main>{{end}}
+
+{{define "foot"}}</main></body></html>{{end}}

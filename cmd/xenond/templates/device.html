@@ -1,0 +1,117 @@
+{{define "device"}}{{template "head" .}}
+<p class="back"><a href="/devices">← Devices</a></p>
+<h1>{{.Dev.Device.Hostname}} <span class="pill {{.Op.Class}}">{{.Op.Label}}</span>
+  <span class="mut" style="font-size:13px;font-weight:400">· {{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}} · {{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</span>
+</h1>
+
+{{$id := .Dev.Device.ID}}
+<nav class="tabs">
+  <a class="tab {{if eq .Tab "overview"}}on{{end}}" href="/device/{{$id}}?tab=overview">Overview</a>
+  <a class="tab {{if eq .Tab "ports"}}on{{end}}" href="/device/{{$id}}?tab=ports">Ports</a>
+  <a class="tab {{if eq .Tab "health"}}on{{end}}" href="/device/{{$id}}?tab=health">Health</a>
+  <a class="tab {{if eq .Tab "alarms"}}on{{end}}" href="/device/{{$id}}?tab=alarms">Alarms</a>
+  <a class="tab {{if eq .Tab "config"}}on{{end}}" href="/device/{{$id}}?tab=config">Config</a>
+</nav>
+
+<div id="drill"></div>
+
+{{if eq .Tab "overview"}}
+  {{if .Graphs}}
+  <div class="graphs">
+    {{range .Graphs}}
+    <div class="graph clickable" hx-get="/device/{{$id}}/graph?m={{.Key}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
+      <div class="graph-h"><span>{{.Title}}</span><span class="graph-cur">{{.Cur}}</span></div>
+      {{.SVG}}
+    </div>
+    {{end}}
+  </div>
+  {{else}}<p class="mut">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
+  <div class="cards" style="margin-top:18px">
+    <div class="card">
+      <h3>Device</h3>
+      <dl class="kv">
+        <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
+        <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
+        <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
+        <dt>Series</dt><dd>{{if .Metrics.Reachable}}<span class="big">{{.Metrics.Series}}</span> <span class="mut">live · {{.Dev.EstSeries}} planned</span>{{else}}<span class="big">{{.Dev.EstSeries}}</span> <span class="mut">planned</span>{{end}}</dd>
+      </dl>
+    </div>
+  </div>
+
+{{else if eq .Tab "ports"}}
+  {{if .Ports}}
+  <table>
+    <thead><tr><th>Interface</th><th style="text-align:right">In</th><th style="text-align:right">Out</th></tr></thead>
+    <tbody>
+    {{range .Ports}}
+    <tr class="clickable" hx-get="/device/{{$id}}/graph?m=port&iface={{.Name | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
+      <td class="mono">{{.Name}}</td><td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<p class="mut">No port metrics available.</p>{{end}}
+
+{{else if eq .Tab "health"}}
+  {{if .Health}}
+  <div class="graphs">
+    {{range .Health}}
+    <div class="graph"><div class="graph-h"><span>{{.Title}}</span><span class="graph-cur">{{.Cur}}</span></div>{{.SVG}}</div>
+    {{end}}
+  </div>
+  {{else}}<p class="mut">No sensor metrics available.</p>{{end}}
+
+{{else if eq .Tab "alarms"}}
+  {{if .Alarms}}
+  <table>
+    <thead><tr><th>Severity</th><th>Alarm</th><th style="text-align:right">Value</th></tr></thead>
+    <tbody>
+    {{range .Alarms}}
+    <tr><td><span class="pill {{sevClass .Severity}}">{{.Severity}}</span>{{if .Acked}} <span class="mut">ack’d</span>{{end}}</td><td>{{.Summary}}</td><td style="text-align:right" class="mono">{{printf "%.0f" .Value}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<p class="mut">No active alarms for this device.</p>{{end}}
+
+{{else if eq .Tab "config"}}
+  <div class="cards">
+    <div class="card">
+      <h3>Identity · detection</h3>
+      <dl class="kv">
+        <dt>Signature</dt><dd class="mono">{{.Dev.Signature.Vendor}} · {{.Dev.Signature.Model}}</dd>
+        <dt>Matched rule</dt><dd class="mono">{{if .Dev.Matched}}{{.Dev.Rule.ID}} <span class="mut">(priority {{.Dev.Rule.Priority}})</span>{{else}}<span class="mut">none</span>{{end}}</dd>
+        <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
+        <dt>Lifecycle</dt><dd><span class="pill {{stateClass .Dev.Device.State}}">{{.Dev.Device.State}}</span></dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Telemetry · profile</h3>
+      <dl class="kv">
+        <dt>Profile</dt><dd class="mono">{{with .Dev.Device.ProfileID}}{{.}}{{else}}<span class="mut">—</span>{{end}}</dd>
+        <dt>Opt-ins</dt><dd class="mono">{{if .Dev.Device.OptIns}}{{range .Dev.Device.OptIns}}{{.}} {{end}}{{else}}<span class="mut">none</span>{{end}}</dd>
+        <dt>Est. series</dt><dd><span class="big">{{.Dev.EstSeries}}</span> <span class="mut">planning</span></dd>
+      </dl>
+    </div>
+  </div>
+
+  <h2>Subscriptions <span class="mut">({{len .Dev.Profile.Subscriptions}})</span></h2>
+  <table>
+    <thead><tr><th>Path</th><th>Mode</th><th>Interval</th><th>Group</th><th>Drop · collector-side</th><th style="text-align:right">Est.</th></tr></thead>
+    <tbody>
+    {{range .Dev.Profile.Subscriptions}}
+    <tr>
+      <td class="mono">{{.Path}}</td>
+      <td>{{.Mode}}</td>
+      <td>{{if .IntervalSec}}{{.IntervalSec}}s{{else}}<span class="mut">—</span>{{end}}</td>
+      <td class="mono">{{.Group}}</td>
+      <td class="mono drop">{{if .Drop}}{{range .Drop}}{{.}}{{end}}{{else}}<span class="mut">—</span>{{end}}</td>
+      <td style="text-align:right" class="mono">{{.EstSeries}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+
+  <h2>Generated gNMIc config <span class="mut">· M2.c → gNMIc HTTP loader</span></h2>
+  <pre>{{.ConfigJSON}}</pre>
+{{end}}
+{{template "foot" .}}{{end}}

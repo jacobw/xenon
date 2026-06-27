@@ -1,0 +1,23 @@
+{{define "detect-preview"}}
+<div class="card" style="margin-top:12px">
+  <h3>Detected · {{.Res.Addr}}</h3>
+  <dl class="kv">
+    <dt>Signature</dt><dd class="mono">{{.Res.Sig.Vendor}} · {{.Res.Sig.Model}}{{with .Res.Sig.Version}} · {{.}}{{end}}</dd>
+    <dt>Hostname</dt><dd class="mono">{{.Res.Hostname}}</dd>
+    <dt>Matched rule</dt><dd class="mono">{{if .O.Matched}}{{.O.Rule.ID}} <span class="mut">(priority {{.O.Rule.Priority}})</span>{{else}}<span class="warn">no rule — would be unclassified</span>{{end}}</dd>
+    <dt>Platform</dt><dd class="mono">{{.O.Device.Platform.Vendor}}/{{.O.Device.Platform.Family}}/{{.O.Device.Platform.Model}}</dd>
+    <dt>Profile</dt><dd class="mono">{{with .O.Device.ProfileID}}{{.}} <span class="mut">· ~{{$.O.EstSeries}} series</span>{{else}}<span class="mut">—</span>{{end}}</dd>
+  </dl>
+  <form hx-post="/onboard" hx-target="#detect-result" hx-swap="innerHTML" style="margin:0">
+    <input type="hidden" name="addr" value="{{.Addr}}">
+    <button class="btn" type="submit">Onboard {{.Res.Hostname}} →</button>
+  </form>
+</div>
+{{end}}
+
+{{define "detect-error"}}
+<div class="card" style="margin-top:12px;border-color:var(--bad)">
+  <strong style="color:var(--bad)">Detection failed</strong>
+  <p class="mono mut" style="margin:8px 0 0">{{.Err}}</p>
+</div>
+{{end}}

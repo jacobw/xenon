@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gnmic-config
+  labels: {app: gnmic}
+data:
+  gnmic.yaml: |
+    # Targets are PULLED from xenond's /gnmic/targets (I3 http loader); this
+    # config holds the named subscriptions (matching the engine subName scheme),
+    # the out-queue drop, and the Prometheus output. Password from GNMIC_PASSWORD.
+    username: {{ .Values.gnmic.username }}
+    skip-verify: true
+    encoding: json
+    subscriptions:
+      interfaces_interfacename_state_counters:
+        paths: ["/interfaces/interface[name=*]/state/counters"]
+        stream-mode: sample
+        sample-interval: 30s
+      interfaces_interfacename_state_oper-status:
+        paths: ["/interfaces/interface[name=*]/state/oper-status"]
+        stream-mode: on-change
+      system_cpus_cpuindex_state:
+        paths: ["/system/cpus/cpu[index=*]/state"]
+        stream-mode: sample
+        sample-interval: 60s
+      system_memory_state:
+        paths: ["/system/memory/state"]
+        stream-mode: sample
+        sample-interval: 60s
+      components_componentname_state_temperature:
+        paths: ["/components/component[name=*]/state/temperature"]
+        stream-mode: sample
+        sample-interval: 60s
+      network-instances_network-instance_protocols_protocol_bgp_neighbors_neighborneighbor-address_state:
+        paths: ["/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/state"]
+        stream-mode: on-change
+      junos_system_linecard_qmon-sw_queue_state:
+        paths: ["/junos/system/linecard/qmon-sw/queue/state"]
+        stream-mode: sample
+        sample-interval: 30s
+    processors:
+      drop-out-queue:
+        event-delete:
+          value-names: ["out-queue"]
+    outputs:
+      prom:
+        type: prometheus
+        listen: ":9273"
+        path: "/metrics"
+        event-processors: ["drop-out-queue"]
+    loaders:
+      - type: http
+        url: "http://xenond.{{ .Release.Namespace }}.svc.cluster.local:8080/gnmic/targets"
+        interval: {{ .Values.gnmic.loaderInterval }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gnmic
+  labels: {app: gnmic}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: gnmic}
+  template:
+    metadata:
+      labels: {app: gnmic}
+    spec:
+      containers:
+        - name: gnmic
+          image: {{ .Values.gnmic.image | quote }}
+          args: ["--config", "/etc/gnmic/gnmic.yaml", "subscribe"]
+          env:
+            - name: GNMIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentials.existingSecret }}
+                  key: GNMIC_PASSWORD
+          ports:
+            - {name: metrics, containerPort: 9273}
+          volumeMounts:
+            - {name: config, mountPath: /etc/gnmic}
+          resources: {{ toYaml .Values.gnmic.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap: {name: gnmic-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gnmic
+  labels: {app: gnmic}
+spec:
+  selector: {app: gnmic}
+  ports:
+    - {name: metrics, port: 9273, targetPort: 9273}

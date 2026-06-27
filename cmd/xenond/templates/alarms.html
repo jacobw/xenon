@@ -1,0 +1,37 @@
+{{define "alarms"}}{{template "head" .}}
+<h1>Alarms <span class="mut">· {{len .Active}} active</span></h1>
+<div id="alarms">{{template "alarms-table" .}}</div>
+{{template "foot" .}}{{end}}
+
+{{define "alarms-table"}}
+{{if .Active}}
+<table>
+  <thead><tr><th>Severity</th><th>Alarm</th><th>Device</th><th style="text-align:right">Value</th><th></th></tr></thead>
+  <tbody>
+  {{range .Active}}
+  <tr>
+    <td><span class="pill {{sevClass .Severity}}">{{.Severity}}</span>{{if .Acked}} <span class="mut">ack’d</span>{{end}}</td>
+    <td>{{.Summary}}</td>
+    <td class="mono"><a href="/device/d-{{.Device}}?tab=alarms">{{.Device}}</a></td>
+    <td style="text-align:right" class="mono">{{printf "%.0f" .Value}}</td>
+    <td>{{if not .Acked}}<form hx-post="/alarms/ack" hx-target="#alarms" hx-swap="innerHTML" style="margin:0"><input type="hidden" name="key" value="{{.Key}}"><button class="btn" style="padding:4px 10px" type="submit">ack</button></form>{{end}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="mut">No active alarms.</p>
+{{end}}
+
+{{if .Cleared}}
+<h2>Recently cleared <span class="mut">({{len .Cleared}})</span></h2>
+<table>
+  <thead><tr><th>Severity</th><th>Alarm</th><th>Device</th></tr></thead>
+  <tbody>
+  {{range .Cleared}}
+  <tr class="mut"><td><span class="pill mut">{{.Severity}}</span></td><td>{{.Summary}}</td><td class="mono">{{.Device}}</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

@@ -1,0 +1,13 @@
+# Local Claude Code settings (machine-specific permissions)
+.claude/settings.local.json
+
+# Go build output
+/xenon
+/xenond
+*.exe
+*.test
+*.out
+*.prof
+
+# Editor / OS cruft
+.DS_Store

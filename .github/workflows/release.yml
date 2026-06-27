@@ -1,0 +1,70 @@
+name: release
+
+# Publishes the xenond OCI image and the xenon Helm chart to ghcr.io using the
+# built-in GITHUB_TOKEN (no PAT needed). Same shape as the LibreNMS chart CI:
+# build/push image, then helm package + helm push to an OCI registry.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/xenond
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  chart:
+    runs-on: ubuntu-latest
+    needs: image
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      # On a vX.Y.Z tag, sync chart version + appVersion to the tag so the chart
+      # references the matching image (values.image.tag defaults to appVersion).
+      - name: Sync chart version to tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          sed -i "s/^version:.*/version: ${V}/" charts/xenon/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${V}\"/" charts/xenon/Chart.yaml
+
+      - name: Helm registry login (OCI)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Package & push chart
+        run: |
+          helm package charts/xenon --destination dist
+          helm push dist/xenon-*.tgz oci://ghcr.io/${{ github.repository_owner }}/charts

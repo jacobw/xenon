@@ -1,0 +1,39 @@
+{{define "admin"}}{{template "head" .}}
+<h1>Admin <span class="mut">· content &amp; onboarding</span></h1>
+
+<div class="card" style="margin-bottom:20px">
+  <h3>Onboard a device <span class="mut">· point at a live gNMI target</span></h3>
+  <form hx-post="/onboard/detect" hx-target="#detect-result" hx-swap="innerHTML" hx-indicator="#detecting" style="display:flex;gap:8px;align-items:center;margin:0">
+    <input class="inp" type="text" name="addr" value="192.0.2.10:50051" placeholder="host:port" style="flex:1">
+    <button class="btn" type="submit">Detect</button>
+    <span id="detecting" class="htmx-indicator mut">probing…</span>
+  </form>
+  <div id="detect-result"></div>
+</div>
+
+<h2>Detection rules <span class="mut">· content · highest priority first</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Priority</th><th>Match</th><th>Platform</th><th>Profile</th></tr></thead>
+  <tbody>
+  {{range .Rules}}
+  <tr>
+    <td class="mono">{{.ID}}</td>
+    <td class="mono">{{.Priority}}</td>
+    <td class="mono mut">{{with .Match.ChassisMfgName}}mfg~{{.}} {{end}}{{with .Match.ChassisModel}}model~{{.}} {{end}}{{with .Match.SupportsModels}}supports {{.}}{{end}}</td>
+    <td class="mono">{{.Platform.Vendor}}/{{.Platform.Family}}/{{.Platform.Model}}</td>
+    <td class="mono">{{.Profile}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+
+<h2>Profiles <span class="mut">· content</span></h2>
+<table>
+  <thead><tr><th>ID</th><th style="text-align:right">Subscriptions</th><th style="text-align:right">Est. series</th></tr></thead>
+  <tbody>
+  {{range .Profiles}}
+  <tr><td class="mono">{{.ID}}</td><td style="text-align:right" class="mono">{{.Subs}}</td><td style="text-align:right" class="mono">{{.Series}}</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{template "foot" .}}{{end}}

@@ -1,0 +1,50 @@
+image:
+  repository: ghcr.io/OWNER/xenond
+  tag: ""                 # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+xenond:
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+
+gnmic:
+  image: ghcr.io/openconfig/gnmic:0.46.0
+  loaderInterval: 15s
+  username: telemetry-ro
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+prometheus:
+  image: prom/prometheus:v2.54.1
+  retention: 15d
+  storage:
+    storageClassName: longhorn
+    size: 5Gi
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+# Metric labels applied at the Prometheus scrape (single-device example; in
+# production these come per-target from the generated gNMIc config).
+deviceLabels:
+  device: sw1.lab.example.com
+  platform: ex4100
+  site: lab
+  role: access
+
+# Secret holding GNMIC_PASSWORD (gnmic --password). Bring your own (SOPS), or let
+# the chart create it (not recommended for git).
+credentials:
+  existingSecret: xenon-device-creds
+  create: false
+  password: ""
+
+ingress:
+  enabled: true
+  className: traefik
+  host: xenon.lab.example.com
+  annotations: {}
+  tls: []

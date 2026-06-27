@@ -1,0 +1,8 @@
+apiVersion: v2
+name: xenon
+description: gNMI/OpenConfig network monitoring — xenond control plane + gnmic collector + Prometheus
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+sources:
+  - https://github.com/OWNER/xenon

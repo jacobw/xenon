@@ -1,0 +1,20 @@
+{{define "graph-detail"}}
+<div class="card drill-card">
+  <div class="drill-top">
+    <span class="drill-title">{{.Title}}</span>
+    <span class="ranges">
+      {{$d := .}}{{range .Ranges}}<a class="rbtn{{if eq . $d.Range}} on{{end}}" hx-get="{{$d.Base}}&r={{.}}" hx-target="#drill" hx-swap="innerHTML">{{.}}</a>{{end}}
+      <a class="rbtn" onclick="document.getElementById('drill').innerHTML='';return false">✕</a>
+    </span>
+  </div>
+  <div class="graph-h">
+    <span class="mut">last {{.Range}}{{if .Dual}} · <span style="color:#a371f7">in</span> / <span style="color:#f778ba">out</span>{{end}}</span>
+    <span class="graph-cur">{{.Cur}}{{if not .Dual}} <span class="mut" style="font-weight:400">· min {{.Min}} · max {{.Max}}</span>{{end}}</span>
+  </div>
+  <div class="bigchart">{{.SVG}}</div>
+</div>
+{{end}}
+
+{{define "graph-empty"}}
+<div class="card drill-card mut">No data for this graph in the selected range yet — Prometheus may need more history.</div>
+{{end}}

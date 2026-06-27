@@ -1,0 +1,20 @@
+{{define "inventory"}}{{template "head" .}}
+<h1>Devices <span class="mut">· {{len .Rows}} · ~{{.Total}} planned series</span></h1>
+<table>
+  <thead><tr><th>Status</th><th>Hostname</th><th>Platform</th><th>Site / role</th><th style="text-align:right">Series</th><th>Alarms</th><th></th></tr></thead>
+  <tbody>
+  {{range .Rows}}
+  <tr>
+    <td><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></td>
+    <td><a href="/device/{{.O.Device.ID}}">{{.O.Device.Hostname}}</a></td>
+    <td class="mono">{{if .O.Device.Platform.Model}}{{.O.Device.Platform.Vendor}}/{{.O.Device.Platform.Family}}/{{.O.Device.Platform.Model}}{{else}}<span class="mut">—</span>{{end}}</td>
+    <td class="mono mut">{{with index .O.Device.Tags "site"}}{{.}}{{end}}{{with index .O.Device.Tags "role"}} · {{.}}{{end}}</td>
+    <td style="text-align:right" class="mono">{{if .O.EstSeries}}{{.O.EstSeries}}{{else}}<span class="mut">—</span>{{end}}</td>
+    <td>{{if .Alarms}}<a href="/device/{{.O.Device.ID}}?tab=alarms"><span class="pill bad">{{.Alarms}}</span></a>{{else}}<span class="mut">0</span>{{end}}</td>
+    <td>{{if ne .O.Device.State "active"}}<span class="pill warn" title="config: needs a detection rule">{{.O.Device.State}}</span>{{end}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+<p class="mut" style="margin-top:14px">Status = operational (telemetry liveness). Onboard new devices from <a href="/admin">Admin</a>.</p>
+{{template "foot" .}}{{end}}
