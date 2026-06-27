@@ -96,7 +96,7 @@ backstop for a few critical alarms).
 - **Threshold:** tick → M2.d query → firing `{device, if}` ≥ `for` → active alarm → `raised` → P3 notify + UI
   SSE. Condition resolves → `cleared` → recovery notify.
 - **Device-down storm:** device-down active → that device's child alarms suppressed → **one** notification.
-- **Maintenance:** window active for `site=syd` → syd alarms suppressed (in-maintenance), no pages.
+- **Maintenance:** window active for `site=dc1` → syd alarms suppressed (in-maintenance), no pages.
 - **Ack:** operator acks → re-notify/escalation stops; alarm stays visible until cleared.
 
 ---

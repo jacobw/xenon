@@ -39,12 +39,12 @@ func main() {
 		{
 			// Example access switch: Juniper EX4100-F-12P, Junos 23.4R2-S7.7
 			// (signature as gNMI reports it from /components + /system).
-			name: "sw1.lab.example.com",
+			name: "switch1.example.com",
 			sig: model.Signature{
 				Vendor: "Juniper", Model: "EX4100-F-12P", OS: "Junos", Version: "23.4R2-S7.7",
 				SupportedModels: []string{"openconfig-interfaces", "openconfig-system", "openconfig-platform"},
 			},
-			tags: map[string]string{"site": "lab", "role": "access"},
+			tags: map[string]string{"site": "dc1", "role": "access"},
 		},
 		{
 			name: "mystery1",

@@ -64,9 +64,9 @@ a registry by [`.github/workflows/release.yml`](.github/workflows/release.yml) o
 push/tag. The chart deploys xenond + gnmic + Prometheus into one namespace:
 
 ```sh
-helm install xenon oci://ghcr.io/OWNER/charts/xenon \
+helm install xenon oci://ghcr.io/jacobw/charts/xenon \
   --namespace xenon --create-namespace \
-  --set image.repository=ghcr.io/OWNER/xenond \
+  --set image.repository=ghcr.io/jacobw/xenond \
   --set ingress.host=xenon.example.com
 ```
 

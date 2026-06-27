@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/OWNER/xenond
+  repository: ghcr.io/jacobw/xenond
   tag: ""                 # defaults to .Chart.AppVersion
   pullPolicy: IfNotPresent
 imagePullSecrets: []
@@ -30,9 +30,9 @@ prometheus:
 # Metric labels applied at the Prometheus scrape (single-device example; in
 # production these come per-target from the generated gNMIc config).
 deviceLabels:
-  device: sw1.lab.example.com
+  device: switch1.example.com
   platform: ex4100
-  site: lab
+  site: dc1
   role: access
 
 # Secret holding GNMIC_PASSWORD (gnmic --password). Bring your own (SOPS), or let
@@ -45,6 +45,6 @@ credentials:
 ingress:
   enabled: true
   className: traefik
-  host: xenon.lab.example.com
+  host: xenon.example.com
   annotations: {}
   tls: []

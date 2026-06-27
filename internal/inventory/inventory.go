@@ -38,12 +38,12 @@ type seed struct {
 func seeds() []seed {
 	return []seed{
 		{
-			name: "sw1.lab.example.com", mgmt: "192.0.2.10:50051",
+			name: "switch1.example.com", mgmt: "192.0.2.10:50051",
 			sig: model.Signature{
 				Vendor: "Juniper", Model: "EX4100-F-12P", OS: "Junos", Version: "23.4R2-S7.7",
 				SupportedModels: []string{"openconfig-interfaces", "openconfig-system", "openconfig-platform"},
 			},
-			tags: map[string]string{"site": "lab", "role": "access"},
+			tags: map[string]string{"site": "dc1", "role": "access"},
 		},
 		{
 			name: "core1.example.com", mgmt: "core1.example.com:9339",
