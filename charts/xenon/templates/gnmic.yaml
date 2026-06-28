@@ -51,6 +51,10 @@ data:
         type: prometheus
         listen: ":9273"
         path: "/metrics"
+        # Emit enum/string leaves (e.g. oper-status) as a value=1 metric carrying
+        # the string as a label — the Prometheus state-set pattern. Without this
+        # gnmic drops non-numeric values, so port up/down would be invisible.
+        strings-as-labels: true
         event-processors: ["drop-out-queue"]
     loader:
       type: http

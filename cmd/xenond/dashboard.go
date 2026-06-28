@@ -44,13 +44,26 @@ type graph struct {
 
 // port is one interface row for the ports table, with a mini in/out sparkline.
 type port struct {
-	Name     string
-	In       string
-	Out      string
-	Err      string
-	ErrClass string // "" when clean, "bad" when errors/discards are nonzero
-	SVG      template.HTML
-	tot      float64
+	Name        string
+	Status      string // UP / DOWN (from oper-status state-set); "" if unknown
+	StatusClass string // ok | bad
+	In          string
+	Out         string
+	Err         string
+	ErrClass    string // "" when clean, "bad" when errors/discards are nonzero
+	SVG         template.HTML
+	tot         float64
+}
+
+// isPhysicalPort keeps real front-panel / aggregate interfaces and filters out
+// Junos internal pseudo-interfaces (bme0, cbp0, dsc, esi, fti0, …).
+func isPhysicalPort(name string) bool {
+	for _, p := range []string{"ge-", "xe-", "et-", "mge-", "ae", "em", "fxp", "irb"} {
+		if strings.HasPrefix(name, p) {
+			return true
+		}
+	}
+	return false
 }
 
 const (
@@ -140,6 +153,12 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	in := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q}[1m])`, source), "interface_name")
 	out := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q}[1m])`, source), "interface_name")
 	errs := mc.VectorBy(errRateQuery(source, ""), "interface_name")
+	status := map[string]string{}
+	for _, l := range mc.VectorFull(fmt.Sprintf(`interfaces_interface_state_oper_status{source=%q}`, source)) {
+		if n := l.Labels["interface_name"]; n != "" {
+			status[n] = l.Labels["oper_status"]
+		}
+	}
 	names := map[string]bool{}
 	for n := range in {
 		names[n] = true
@@ -147,11 +166,22 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	for n := range out {
 		names[n] = true
 	}
+	for n := range status { // include physical ports even when idle/down
+		if isPhysicalPort(n) {
+			names[n] = true
+		}
+	}
 	ps := make([]port, 0, len(names))
 	for n := range names {
 		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
 		if e := errs[n]; e > 0 {
 			p.Err, p.ErrClass = fmt.Sprintf("%.2f/s", e), "bad"
+		}
+		if s, ok := status[n]; ok {
+			p.Status = s
+			if p.StatusClass = "ok"; s != "UP" {
+				p.StatusClass = "bad"
+			}
 		}
 		ps = append(ps, p)
 	}
@@ -161,8 +191,8 @@ func buildPorts(mc *metrics.Client, source string) []port {
 		}
 		return ps[i].Name < ps[j].Name
 	})
-	if len(ps) > 12 {
-		ps = ps[:12]
+	if len(ps) > 16 {
+		ps = ps[:16]
 	}
 	// Mini in/out sparkline per port (LibreNMS-style); each row drills down.
 	for i := range ps {
