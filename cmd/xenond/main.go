@@ -9,6 +9,7 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -31,7 +32,18 @@ var tmplFS embed.FS
 var tmpl = template.Must(template.New("").Funcs(template.FuncMap{
 	"stateClass": stateClass,
 	"sevClass":   sevClass,
+	"dict":       dict,
 }).ParseFS(tmplFS, "templates/*.html"))
+
+// dict builds a map from alternating key/value args, for passing several values
+// into a nested template (e.g. the shared graph "panel").
+func dict(kv ...any) map[string]any {
+	m := make(map[string]any, len(kv)/2)
+	for i := 0; i+1 < len(kv); i += 2 {
+		m[kv[i].(string)] = kv[i+1]
+	}
+	return m
+}
 
 // stateClass maps an engine lifecycle state to a CSS pill class (Config tab only).
 func stateClass(state string) string {
@@ -73,6 +85,8 @@ type deviceData struct {
 	Ports      []port
 	Health     []graph
 	Alarms     []alarms.Alarm
+	IfCount    int
+	AlarmCount int
 	ConfigJSON string
 }
 
@@ -165,6 +179,10 @@ func main() {
 			dd.Tab = "overview"
 			dd.Metrics = mc.ForDevice(src)
 			dd.Graphs = buildGraphs(mc, src)
+			if n, ok := mc.Scalar(fmt.Sprintf(`count(interfaces_interface_state_counters_in_octets{source=%q})`, src)); ok {
+				dd.IfCount = int(n)
+			}
+			dd.AlarmCount = len(alarmStore.ForDevice(o.Device.Hostname))
 		}
 		render(w, "device", dd)
 	})

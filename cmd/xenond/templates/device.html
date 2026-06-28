@@ -1,3 +1,9 @@
+{{define "panel"}}
+<div class="graph clickable{{if .Wide}} wide{{end}}" hx-get="/device/{{.ID}}/graph?m={{.G.Key}}{{if .G.Iface}}&iface={{.G.Iface | urlquery}}{{end}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
+  <div class="graph-h"><span>{{.G.Title}}</span><span class="graph-cur">{{.G.Cur}}</span></div>
+  {{.G.SVG}}
+</div>
+{{end}}
 {{define "device"}}{{template "head" .}}
 <p class="back"><a href="/devices">← Devices</a></p>
 <h1>{{.Dev.Device.Hostname}} <span class="pill {{.Op.Class}}">{{.Op.Label}}</span>
@@ -16,48 +22,54 @@
 <div id="drill"></div>
 
 {{if eq .Tab "overview"}}
-  {{if .Graphs}}
-  <div class="graphs">
-    {{range .Graphs}}
-    <div class="graph clickable" hx-get="/device/{{$id}}/graph?m={{.Key}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
-      <div class="graph-h"><span>{{.Title}}</span><span class="graph-cur">{{.Cur}}</span></div>
-      {{.SVG}}
-    </div>
-    {{end}}
-  </div>
-  {{else}}<p class="mut">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
-  <div class="cards" style="margin-top:18px">
+  <div class="cards" style="margin-bottom:16px">
     <div class="card">
       <h3>Device</h3>
       <dl class="kv">
+        <dt>Status</dt><dd><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></dd>
         <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
+        <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
         <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
         <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>At a glance</h3>
+      <dl class="kv">
+        <dt>Interfaces</dt><dd><span class="big">{{if .IfCount}}{{.IfCount}}{{else}}—{{end}}</span></dd>
+        <dt>Alarms</dt><dd>{{if .AlarmCount}}<span class="big">{{.AlarmCount}}</span> <a class="mut" href="/device/{{$id}}?tab=alarms">active</a>{{else}}<span class="mut">none active</span>{{end}}</dd>
         <dt>Series</dt><dd>{{if .Metrics.Reachable}}<span class="big">{{.Metrics.Series}}</span> <span class="mut">live · {{.Dev.EstSeries}} planned</span>{{else}}<span class="big">{{.Dev.EstSeries}}</span> <span class="mut">planned</span>{{end}}</dd>
       </dl>
     </div>
   </div>
 
+  {{if .Graphs}}
+  <div class="graphs">
+    {{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" .Wide)}}{{end}}
+  </div>
+  {{else}}<p class="mut">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
+
 {{else if eq .Tab "ports"}}
   {{if .Ports}}
   <table>
-    <thead><tr><th>Interface</th><th style="text-align:right">In</th><th style="text-align:right">Out</th></tr></thead>
+    <thead><tr><th>Interface</th><th>Traffic <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">In</th><th style="text-align:right">Out</th></tr></thead>
     <tbody>
     {{range .Ports}}
     <tr class="clickable" hx-get="/device/{{$id}}/graph?m=port&iface={{.Name | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
-      <td class="mono">{{.Name}}</td><td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
+      <td class="mono">{{.Name}}</td>
+      <td>{{with .SVG}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
+      <td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
     </tr>
     {{end}}
     </tbody>
   </table>
+  <p class="mut" style="margin-top:8px">Click a row to drill down (1h / 6h / 24h / 7d).</p>
   {{else}}<p class="mut">No port metrics available.</p>{{end}}
 
 {{else if eq .Tab "health"}}
   {{if .Health}}
   <div class="graphs">
-    {{range .Health}}
-    <div class="graph"><div class="graph-h"><span>{{.Title}}</span><span class="graph-cur">{{.Cur}}</span></div>{{.SVG}}</div>
-    {{end}}
+    {{range .Health}}{{template "panel" (dict "ID" $id "G" . "Wide" false)}}{{end}}
   </div>
   {{else}}<p class="mut">No sensor metrics available.</p>{{end}}
 

@@ -99,6 +99,9 @@ type vectorResp struct {
 
 // scalar runs an instant query and returns the first sample's numeric value.
 func (c *Client) scalar(promql string) (float64, bool) {
+	if !c.Enabled() {
+		return 0, false
+	}
 	resp, err := c.hc.Get(c.base + "/api/v1/query?query=" + url.QueryEscape(promql))
 	if err != nil {
 		return 0, false

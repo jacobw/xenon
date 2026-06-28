@@ -11,19 +11,23 @@ import (
 	"xenon/internal/metrics"
 )
 
-// graph is one rendered health panel (small sparkline). Key drives drill-down.
+// graph is one rendered panel (small sparkline). Key (+ optional Iface) drives the
+// drill-down endpoint; Wide marks a full-width headline graph.
 type graph struct {
 	Key   string
+	Iface string // drill sub-key: interface or sensor component ("" = device-wide)
 	Title string
 	Cur   string
+	Wide  bool
 	SVG   template.HTML
 }
 
-// port is one interface row for the ports table.
+// port is one interface row for the ports table, with a mini in/out sparkline.
 type port struct {
 	Name string
 	In   string
 	Out  string
+	SVG  template.HTML
 	tot  float64
 }
 
@@ -48,23 +52,58 @@ func cFmt(v float64) string   { return fmt.Sprintf("%.0f °C", v) }
 var graphMetrics = map[string]metricSpec{
 	"cpu":  {"CPU used", "#5b9dff", func(s, _ string) string { return fmt.Sprintf(`100 - avg(system_cpus_cpu_state_idle_instant{source=%q})`, s) }, pctFmt},
 	"mem":  {"Memory used", "#3fb950", func(s, _ string) string { return fmt.Sprintf(`system_memory_state_used{source=%q}/1073741824`, s) }, gbFmt},
-	"temp": {"Temperature", "#d29922", func(s, _ string) string { return fmt.Sprintf(`max(components_component_state_temperature_instant{source=%q})`, s) }, cFmt},
+	"temp": {"Temperature", "#d29922", func(s, c string) string {
+		if c != "" {
+			return fmt.Sprintf(`components_component_state_temperature_instant{source=%q,component_name=%q}`, s, c)
+		}
+		return fmt.Sprintf(`max(components_component_state_temperature_instant{source=%q})`, s)
+	}, cFmt},
 	"in":   {"Throughput in", "#a371f7", func(s, _ string) string { return fmt.Sprintf(`8*sum(rate(interfaces_interface_state_counters_in_octets{source=%q}[1m]))`, s) }, bps},
 	"out":  {"Throughput out", "#f778ba", func(s, _ string) string { return fmt.Sprintf(`8*sum(rate(interfaces_interface_state_counters_out_octets{source=%q}[1m]))`, s) }, bps},
 }
 
-// healthKeys are the four sparkline panels on the device page, in order.
-var healthKeys = []string{"cpu", "mem", "temp", "in"}
+// trafficGraph builds the device-wide overall in/out dual sparkline (the page
+// headline). Returns false when no interface counters are available.
+func trafficGraph(mc *metrics.Client, source string, w, h int, wide bool) (graph, bool) {
+	inV, _ := mc.RangeQuery(graphMetrics["in"].promql(source, ""), graphDur, graphStep)
+	outV, _ := mc.RangeQuery(graphMetrics["out"].promql(source, ""), graphDur, graphStep)
+	if len(inV) == 0 && len(outV) == 0 {
+		return graph{}, false
+	}
+	cur := ""
+	if len(inV) > 0 {
+		cur = "↓ " + bps(inV[len(inV)-1])
+	}
+	if len(outV) > 0 {
+		if cur != "" {
+			cur += " · "
+		}
+		cur += "↑ " + bps(outV[len(outV)-1])
+	}
+	return graph{Key: "traffic", Title: "Overall traffic", Cur: cur, Wide: wide, SVG: chart.Dual(inV, outV, w, h, "#a371f7", "#f778ba")}, true
+}
 
+// lineGraph renders a single device-wide metric sparkline by registry key.
+func lineGraph(mc *metrics.Client, source, key string) (graph, bool) {
+	spec := graphMetrics[key]
+	vals, ok := mc.RangeQuery(spec.promql(source, ""), graphDur, graphStep)
+	if !ok {
+		return graph{}, false
+	}
+	return graph{Key: key, Title: spec.title, Cur: spec.format(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, spec.color)}, true
+}
+
+// buildGraphs is the Overview tab: an overall-traffic headline plus CPU/memory/
+// temperature tiles. Every tile is drill-down clickable.
 func buildGraphs(mc *metrics.Client, source string) []graph {
 	var gs []graph
-	for _, k := range healthKeys {
-		spec := graphMetrics[k]
-		vals, ok := mc.RangeQuery(spec.promql(source, ""), graphDur, graphStep)
-		if !ok {
-			continue
+	if g, ok := trafficGraph(mc, source, detailW, 120, true); ok {
+		gs = append(gs, g)
+	}
+	for _, k := range []string{"cpu", "mem", "temp"} {
+		if g, ok := lineGraph(mc, source, k); ok {
+			gs = append(gs, g)
 		}
-		gs = append(gs, graph{Key: k, Title: spec.title, Cur: spec.format(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, spec.color)})
 	}
 	return gs
 }
@@ -92,6 +131,14 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	if len(ps) > 12 {
 		ps = ps[:12]
 	}
+	// Mini in/out sparkline per port (LibreNMS-style); each row drills down.
+	for i := range ps {
+		inV, _ := mc.RangeQuery(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q,interface_name=%q}[1m])`, source, ps[i].Name), graphDur, graphStep)
+		outV, _ := mc.RangeQuery(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q,interface_name=%q}[1m])`, source, ps[i].Name), graphDur, graphStep)
+		if len(inV) > 0 || len(outV) > 0 {
+			ps[i].SVG = chart.Dual(inV, outV, 150, 32, "#a371f7", "#f778ba")
+		}
+	}
 	return ps
 }
 
@@ -100,9 +147,8 @@ func buildPorts(mc *metrics.Client, source string) []port {
 func buildHealth(mc *metrics.Client, source string) []graph {
 	var gs []graph
 	for _, k := range []string{"cpu", "mem"} {
-		spec := graphMetrics[k]
-		if vals, ok := mc.RangeQuery(spec.promql(source, ""), graphDur, graphStep); ok {
-			gs = append(gs, graph{Key: k, Title: spec.title, Cur: spec.format(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, spec.color)})
+		if g, ok := lineGraph(mc, source, k); ok {
+			gs = append(gs, g)
 		}
 	}
 	comps := mc.VectorBy(fmt.Sprintf(`components_component_state_temperature_instant{source=%q}`, source), "component_name")
@@ -112,8 +158,8 @@ func buildHealth(mc *metrics.Client, source string) []graph {
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		if vals, ok := mc.RangeQuery(fmt.Sprintf(`components_component_state_temperature_instant{source=%q,component_name=%q}`, source, n), graphDur, graphStep); ok {
-			gs = append(gs, graph{Key: "temp", Title: "Temp · " + n, Cur: cFmt(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, "#d29922")})
+		if vals, ok := mc.RangeQuery(graphMetrics["temp"].promql(source, n), graphDur, graphStep); ok {
+			gs = append(gs, graph{Key: "temp", Iface: n, Title: "Temp · " + n, Cur: cFmt(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, "#d29922")})
 		}
 	}
 	return gs
@@ -158,9 +204,18 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 	}
 	dur, step := rangeParams(r)
 
-	if m == "port" {
-		inV, _ := mc.RangeQuery(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q,interface_name=%q}[1m])`, source, iface), dur, step)
-		outV, _ := mc.RangeQuery(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q,interface_name=%q}[1m])`, source, iface), dur, step)
+	// Dual in/out traffic: device-wide (traffic) or per-interface (port).
+	if m == "traffic" || m == "port" {
+		inq := graphMetrics["in"].promql(source, "")
+		outq := graphMetrics["out"].promql(source, "")
+		title, base := "Overall traffic", fmt.Sprintf("/device/%s/graph?m=traffic", id)
+		if m == "port" {
+			inq = fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q,interface_name=%q}[1m])`, source, iface)
+			outq = fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q,interface_name=%q}[1m])`, source, iface)
+			title, base = "Port "+iface, fmt.Sprintf("/device/%s/graph?m=port&iface=%s", id, url.QueryEscape(iface))
+		}
+		inV, _ := mc.RangeQuery(inq, dur, step)
+		outV, _ := mc.RangeQuery(outq, dur, step)
 		if len(inV) == 0 && len(outV) == 0 {
 			return graphDetail{}, false
 		}
@@ -172,9 +227,8 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 			co = bps(outV[len(outV)-1])
 		}
 		return graphDetail{
-			Title:  "Port " + iface,
-			Base:   fmt.Sprintf("/device/%s/graph?m=port&iface=%s", id, url.QueryEscape(iface)),
-			Range:  r, Ranges: graphRanges, Dual: true,
+			Title: title, Base: base,
+			Range: r, Ranges: graphRanges, Dual: true,
 			Cur: "↓ " + ci + " / ↑ " + co,
 			SVG: chart.Dual(inV, outV, detailW, detailH, "#a371f7", "#f778ba"),
 		}, true
@@ -197,10 +251,15 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 			mx = v
 		}
 	}
+	title := spec.title
+	base := fmt.Sprintf("/device/%s/graph?m=%s", id, m)
+	if iface != "" { // per-sensor (e.g. a single temperature component)
+		title += " · " + iface
+		base += "&iface=" + url.QueryEscape(iface)
+	}
 	return graphDetail{
-		Title:  spec.title,
-		Base:   fmt.Sprintf("/device/%s/graph?m=%s", id, m),
-		Range:  r, Ranges: graphRanges,
+		Title: title, Base: base,
+		Range: r, Ranges: graphRanges,
 		Cur: spec.format(last), Min: spec.format(mn), Max: spec.format(mx),
 		SVG: chart.Line(vals, detailW, detailH, spec.color),
 	}, true
