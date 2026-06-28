@@ -22,5 +22,11 @@
     "severity": "warning",
     "summary": "Low optical Rx on {{device}} \u00b7 {{component_name}} ({{value}} dBm)",
     "expr": "components_component_transceiver_state_input_power_instant < -14"
+  },
+  {
+    "id": "interface-errors",
+    "severity": "warning",
+    "summary": "Interface errors on {{device}} \u00b7 {{interface_name}} ({{value}}/s)",
+    "expr": "sum by (device, interface_name) (rate(interfaces_interface_state_counters_in_errors[5m]) + rate(interfaces_interface_state_counters_out_errors[5m]) + rate(interfaces_interface_state_counters_in_discards[5m]) + rate(interfaces_interface_state_counters_out_discards[5m])) > 1"
   }
 ]

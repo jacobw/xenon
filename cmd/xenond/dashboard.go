@@ -5,11 +5,31 @@ import (
 	"html/template"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"xenon/internal/chart"
 	"xenon/internal/metrics"
 )
+
+// errRateQuery is the combined in+out error+discard rate (per second). With iface
+// "" it sums by interface for the ports table; with an iface it is scoped to that
+// interface (used for the alarm-aligned drill column).
+func errRateQuery(source, iface string) string {
+	sel := fmt.Sprintf("source=%q", source)
+	if iface != "" {
+		sel = fmt.Sprintf("source=%q,interface_name=%q", source, iface)
+	}
+	var parts []string
+	for _, l := range []string{"in_errors", "out_errors", "in_discards", "out_discards"} {
+		parts = append(parts, fmt.Sprintf("rate(interfaces_interface_state_counters_%s{%s}[5m])", l, sel))
+	}
+	q := strings.Join(parts, " + ")
+	if iface == "" {
+		return "sum by (interface_name)(" + q + ")"
+	}
+	return q
+}
 
 // graph is one rendered panel (small sparkline). Key (+ optional Iface) drives the
 // drill-down endpoint; Wide marks a full-width headline graph.
@@ -24,11 +44,13 @@ type graph struct {
 
 // port is one interface row for the ports table, with a mini in/out sparkline.
 type port struct {
-	Name string
-	In   string
-	Out  string
-	SVG  template.HTML
-	tot  float64
+	Name     string
+	In       string
+	Out      string
+	Err      string
+	ErrClass string // "" when clean, "bad" when errors/discards are nonzero
+	SVG      template.HTML
+	tot      float64
 }
 
 const (
@@ -117,6 +139,7 @@ func buildGraphs(mc *metrics.Client, source string) []graph {
 func buildPorts(mc *metrics.Client, source string) []port {
 	in := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q}[1m])`, source), "interface_name")
 	out := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q}[1m])`, source), "interface_name")
+	errs := mc.VectorBy(errRateQuery(source, ""), "interface_name")
 	names := map[string]bool{}
 	for n := range in {
 		names[n] = true
@@ -126,7 +149,11 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	}
 	ps := make([]port, 0, len(names))
 	for n := range names {
-		ps = append(ps, port{Name: n, In: bps(in[n]), Out: bps(out[n]), tot: in[n] + out[n]})
+		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
+		if e := errs[n]; e > 0 {
+			p.Err, p.ErrClass = fmt.Sprintf("%.2f/s", e), "bad"
+		}
+		ps = append(ps, p)
 	}
 	sort.Slice(ps, func(i, j int) bool {
 		if ps[i].tot != ps[j].tot {
@@ -263,6 +290,10 @@ type graphDetail struct {
 	Max    string
 	Dual   bool
 	SVG    template.HTML
+	// Optional second chart (errors/discards under a port's traffic).
+	Title2 string
+	Cur2   string
+	SVG2   template.HTML
 }
 
 const detailW, detailH = 840, 220
@@ -297,12 +328,29 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 		if len(outV) > 0 {
 			co = bps(outV[len(outV)-1])
 		}
-		return graphDetail{
+		gd := graphDetail{
 			Title: title, Base: base,
 			Range: r, Ranges: graphRanges, Dual: true,
 			Cur: "↓ " + ci + " / ↑ " + co,
 			SVG: chart.Dual(inV, outV, detailW, detailH, "#a371f7", "#f778ba"),
-		}, true
+		}
+		if m == "port" { // LibreNMS-style: errors/discards under the port's traffic
+			inErr, _ := mc.RangeQuery(fmt.Sprintf(`rate(interfaces_interface_state_counters_in_errors{source=%q,interface_name=%q}[1m]) + rate(interfaces_interface_state_counters_in_discards{source=%q,interface_name=%q}[1m])`, source, iface, source, iface), dur, step)
+			outErr, _ := mc.RangeQuery(fmt.Sprintf(`rate(interfaces_interface_state_counters_out_errors{source=%q,interface_name=%q}[1m]) + rate(interfaces_interface_state_counters_out_discards{source=%q,interface_name=%q}[1m])`, source, iface, source, iface), dur, step)
+			if len(inErr) > 0 || len(outErr) > 0 {
+				ei, eo := "0", "0"
+				if len(inErr) > 0 {
+					ei = fmt.Sprintf("%.3f/s", inErr[len(inErr)-1])
+				}
+				if len(outErr) > 0 {
+					eo = fmt.Sprintf("%.3f/s", outErr[len(outErr)-1])
+				}
+				gd.Title2 = "Errors + discards · in / out"
+				gd.Cur2 = "↓ " + ei + " / ↑ " + eo
+				gd.SVG2 = chart.Dual(inErr, outErr, detailW, 120, "#f0883e", "#f85149")
+			}
+		}
+		return gd, true
 	}
 
 	spec, ok := graphMetrics[m]

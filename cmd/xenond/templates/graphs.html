@@ -12,6 +12,13 @@
     <span class="graph-cur">{{.Cur}}{{if not .Dual}} <span class="mut" style="font-weight:400">· min {{.Min}} · max {{.Max}}</span>{{end}}</span>
   </div>
   <div class="bigchart">{{.SVG}}</div>
+  {{if .SVG2}}
+  <div class="graph-h" style="margin-top:14px">
+    <span class="mut">{{.Title2}} · <span style="color:#f0883e">in</span> / <span style="color:#f85149">out</span></span>
+    <span class="graph-cur">{{.Cur2}}</span>
+  </div>
+  <div class="bigchart">{{.SVG2}}</div>
+  {{end}}
 </div>
 {{end}}
 
