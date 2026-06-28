@@ -335,8 +335,11 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 			SVG: chart.Dual(inV, outV, detailW, detailH, "#a371f7", "#f778ba"),
 		}
 		if m == "port" { // LibreNMS-style: errors/discards under the port's traffic
-			inErr, _ := mc.RangeQuery(fmt.Sprintf(`rate(interfaces_interface_state_counters_in_errors{source=%q,interface_name=%q}[1m]) + rate(interfaces_interface_state_counters_in_discards{source=%q,interface_name=%q}[1m])`, source, iface, source, iface), dur, step)
-			outErr, _ := mc.RangeQuery(fmt.Sprintf(`rate(interfaces_interface_state_counters_out_errors{source=%q,interface_name=%q}[1m]) + rate(interfaces_interface_state_counters_out_discards{source=%q,interface_name=%q}[1m])`, source, iface, source, iface), dur, step)
+			gd.Title2 = "Errors + discards"
+			// Junos sample mode omits zero-valued error counters, so absence means
+			// clean. Use `or` so the chart still renders if only one leaf is present.
+			inErr, _ := mc.RangeQuery(fmt.Sprintf(`sum(rate(interfaces_interface_state_counters_in_errors{source=%q,interface_name=%q}[1m]) or rate(interfaces_interface_state_counters_in_discards{source=%q,interface_name=%q}[1m]))`, source, iface, source, iface), dur, step)
+			outErr, _ := mc.RangeQuery(fmt.Sprintf(`sum(rate(interfaces_interface_state_counters_out_errors{source=%q,interface_name=%q}[1m]) or rate(interfaces_interface_state_counters_out_discards{source=%q,interface_name=%q}[1m]))`, source, iface, source, iface), dur, step)
 			if len(inErr) > 0 || len(outErr) > 0 {
 				ei, eo := "0", "0"
 				if len(inErr) > 0 {
@@ -345,9 +348,10 @@ func buildGraphDetail(mc *metrics.Client, id, source, m, iface, r string) (graph
 				if len(outErr) > 0 {
 					eo = fmt.Sprintf("%.3f/s", outErr[len(outErr)-1])
 				}
-				gd.Title2 = "Errors + discards · in / out"
 				gd.Cur2 = "↓ " + ei + " / ↑ " + eo
 				gd.SVG2 = chart.Dual(inErr, outErr, detailW, 120, "#f0883e", "#f85149")
+			} else {
+				gd.Cur2 = "none recorded in this range ✓"
 			}
 		}
 		return gd, true
