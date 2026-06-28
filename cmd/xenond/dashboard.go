@@ -47,12 +47,25 @@ type port struct {
 	Name        string
 	Status      string // UP / DOWN (from oper-status state-set); "" if unknown
 	StatusClass string // ok | bad
+	Speed       string // link speed, e.g. 1G (from high-speed); "—" if unknown
 	In          string
 	Out         string
 	Err         string
 	ErrClass    string // "" when clean, "bad" when errors/discards are nonzero
 	SVG         template.HTML
 	tot         float64
+}
+
+// speedFmt renders an interface high-speed value (Mbps) as e.g. 1G / 10G / 100M.
+func speedFmt(mbps float64) string {
+	switch {
+	case mbps <= 0:
+		return "—"
+	case mbps >= 1000:
+		return strings.TrimSuffix(fmt.Sprintf("%.1f", mbps/1000), ".0") + "G"
+	default:
+		return fmt.Sprintf("%.0fM", mbps)
+	}
 }
 
 // isPhysicalPort keeps real front-panel / aggregate interfaces and filters out
@@ -159,6 +172,7 @@ func buildPorts(mc *metrics.Client, source string) []port {
 			status[n] = l.Labels["oper_status"]
 		}
 	}
+	speed := mc.VectorBy(fmt.Sprintf(`interfaces_interface_state_high_speed{source=%q}`, source), "interface_name")
 	names := map[string]bool{}
 	for n := range in {
 		names[n] = true
@@ -173,7 +187,7 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	}
 	ps := make([]port, 0, len(names))
 	for n := range names {
-		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
+		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", Speed: speedFmt(speed[n]), tot: in[n] + out[n]}
 		if e := errs[n]; e > 0 {
 			p.Err, p.ErrClass = fmt.Sprintf("%.2f/s", e), "bad"
 		}

@@ -15,6 +15,7 @@
   <a class="tab {{if eq .Tab "overview"}}on{{end}}" href="/device/{{$id}}?tab=overview">Overview</a>
   <a class="tab {{if eq .Tab "ports"}}on{{end}}" href="/device/{{$id}}?tab=ports">Ports</a>
   <a class="tab {{if eq .Tab "optics"}}on{{end}}" href="/device/{{$id}}?tab=optics">Optics</a>
+  <a class="tab {{if eq .Tab "routing"}}on{{end}}" href="/device/{{$id}}?tab=routing">Routing</a>
   <a class="tab {{if eq .Tab "health"}}on{{end}}" href="/device/{{$id}}?tab=health">Health</a>
   <a class="tab {{if eq .Tab "alarms"}}on{{end}}" href="/device/{{$id}}?tab=alarms">Alarms</a>
   <a class="tab {{if eq .Tab "config"}}on{{end}}" href="/device/{{$id}}?tab=config">Config</a>
@@ -53,12 +54,13 @@
 {{else if eq .Tab "ports"}}
   {{if .Ports}}
   <table>
-    <thead><tr><th>Status</th><th>Interface</th><th>Traffic <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">In</th><th style="text-align:right">Out</th><th style="text-align:right">Errors</th></tr></thead>
+    <thead><tr><th>Status</th><th>Interface</th><th style="text-align:right">Speed</th><th>Traffic <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">In</th><th style="text-align:right">Out</th><th style="text-align:right">Errors</th></tr></thead>
     <tbody>
     {{range .Ports}}
     <tr class="clickable" hx-get="/device/{{$id}}/graph?m=port&iface={{.Name | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
       <td>{{if .Status}}<span class="pill {{.StatusClass}}">{{.Status}}</span>{{else}}<span class="mut">—</span>{{end}}</td>
       <td class="mono">{{.Name}}</td>
+      <td style="text-align:right" class="mono mut">{{.Speed}}</td>
       <td>{{with .SVG}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
       <td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
       <td style="text-align:right" class="mono {{if .ErrClass}}lvl-bad{{else}}mut{{end}}">{{.Err}}</td>
@@ -87,6 +89,25 @@
   </table>
   <p class="mut" style="margin-top:8px">Receive power is health-coloured (green ok · amber warn · red critical). Click a row to drill down; sustained low Rx raises an alarm.</p>
   {{else}}<p class="mut">No optical transceivers detected (no SFP/QSFP with digital diagnostics, or optics not yet collected).</p>{{end}}
+
+{{else if eq .Tab "routing"}}
+  {{if .Routing}}
+  <table>
+    <thead><tr><th>Neighbor</th><th>VRF</th><th style="text-align:right">Peer AS</th><th>State</th><th style="text-align:right">Flaps</th></tr></thead>
+    <tbody>
+    {{range .Routing}}
+    <tr>
+      <td class="mono">{{.Neighbor}}</td>
+      <td class="mono mut">{{.Network}}</td>
+      <td style="text-align:right" class="mono">{{.PeerAS}}</td>
+      <td><span class="pill {{.StateClass}}">{{.State}}</span></td>
+      <td style="text-align:right" class="mono mut">{{.Transitions}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  <p class="mut" style="margin-top:8px">BGP neighbours from OpenConfig <span class="mono">network-instances/…/bgp</span>. Established = green, idle = red.</p>
+  {{else}}<p class="mut">No BGP neighbours — this device has no BGP sessions, or routing isn't collected for its profile.</p>{{end}}
 
 {{else if eq .Tab "health"}}
   {{if .Health}}

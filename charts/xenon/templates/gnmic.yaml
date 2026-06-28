@@ -40,7 +40,10 @@ data:
         sample-interval: 60s
       network-instances_network-instance_protocols_protocol_bgp_neighbors_neighborneighbor-address_state:
         paths: ["/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/state"]
-        stream-mode: on-change
+        # sample (not on-change): session-state is a strings-as-labels state metric
+        # and must be refreshed each interval or it expires from the scrape output.
+        stream-mode: sample
+        sample-interval: 30s
       junos_system_linecard_qmon-sw_queue_state:
         paths: ["/junos/system/linecard/qmon-sw/queue/state"]
         stream-mode: sample

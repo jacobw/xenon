@@ -84,6 +84,7 @@ type deviceData struct {
 	Graphs     []graph
 	Ports      []port
 	Optics     []optic
+	Routing    []bgpPeer
 	Health     []graph
 	Alarms     []alarms.Alarm
 	IfCount    int
@@ -171,6 +172,8 @@ func main() {
 			dd.Ports = buildPorts(mc, src)
 		case "optics":
 			dd.Optics = buildOptics(mc, src)
+		case "routing":
+			dd.Routing = buildRouting(mc, src)
 		case "health":
 			dd.Health = buildHealth(mc, src)
 		case "alarms":
