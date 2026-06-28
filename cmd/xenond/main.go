@@ -83,6 +83,7 @@ type deviceData struct {
 	Metrics    metrics.DeviceMetrics
 	Graphs     []graph
 	Ports      []port
+	Optics     []optic
 	Health     []graph
 	Alarms     []alarms.Alarm
 	IfCount    int
@@ -168,6 +169,8 @@ func main() {
 		switch tab {
 		case "ports":
 			dd.Ports = buildPorts(mc, src)
+		case "optics":
+			dd.Optics = buildOptics(mc, src)
 		case "health":
 			dd.Health = buildHealth(mc, src)
 		case "alarms":

@@ -2,7 +2,7 @@
   {
     "id": "temp-high",
     "severity": "warning",
-    "summary": "High temperature on {{device}} · {{component_name}} ({{value}} °C)",
+    "summary": "High temperature on {{device}} \u00b7 {{component_name}} ({{value}} \u00b0C)",
     "expr": "components_component_state_temperature_instant > 45"
   },
   {
@@ -16,5 +16,11 @@
     "severity": "critical",
     "summary": "High CPU on {{device}} ({{value}} %)",
     "expr": "(100 - system_cpus_cpu_state_idle_instant) > 80"
+  },
+  {
+    "id": "optic-rx-low",
+    "severity": "warning",
+    "summary": "Low optical Rx on {{device}} \u00b7 {{component_name}} ({{value}} dBm)",
+    "expr": "components_component_transceiver_state_input_power_instant < -14"
   }
 ]

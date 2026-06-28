@@ -14,6 +14,7 @@
 <nav class="tabs">
   <a class="tab {{if eq .Tab "overview"}}on{{end}}" href="/device/{{$id}}?tab=overview">Overview</a>
   <a class="tab {{if eq .Tab "ports"}}on{{end}}" href="/device/{{$id}}?tab=ports">Ports</a>
+  <a class="tab {{if eq .Tab "optics"}}on{{end}}" href="/device/{{$id}}?tab=optics">Optics</a>
   <a class="tab {{if eq .Tab "health"}}on{{end}}" href="/device/{{$id}}?tab=health">Health</a>
   <a class="tab {{if eq .Tab "alarms"}}on{{end}}" href="/device/{{$id}}?tab=alarms">Alarms</a>
   <a class="tab {{if eq .Tab "config"}}on{{end}}" href="/device/{{$id}}?tab=config">Config</a>
@@ -65,6 +66,25 @@
   </table>
   <p class="mut" style="margin-top:8px">Click a row to drill down (1h / 6h / 24h / 7d).</p>
   {{else}}<p class="mut">No port metrics available.</p>{{end}}
+
+{{else if eq .Tab "optics"}}
+  {{if .Optics}}
+  <table>
+    <thead><tr><th>Transceiver</th><th>Rx light <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">Rx</th><th style="text-align:right">Tx</th><th style="text-align:right">Bias</th></tr></thead>
+    <tbody>
+    {{range .Optics}}
+    <tr class="clickable" hx-get="/device/{{$id}}/graph?m=optic_rx&iface={{.Port | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
+      <td class="mono">{{.Port}}</td>
+      <td>{{with .SVG}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
+      <td style="text-align:right" class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</td>
+      <td style="text-align:right" class="mono">{{.Tx}}</td>
+      <td style="text-align:right" class="mono">{{.Bias}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  <p class="mut" style="margin-top:8px">Receive power is health-coloured (green ok · amber warn · red critical). Click a row to drill down; sustained low Rx raises an alarm.</p>
+  {{else}}<p class="mut">No optical transceivers detected (no SFP/QSFP with digital diagnostics, or optics not yet collected).</p>{{end}}
 
 {{else if eq .Tab "health"}}
   {{if .Health}}

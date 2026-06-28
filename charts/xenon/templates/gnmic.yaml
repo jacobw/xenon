@@ -31,6 +31,10 @@ data:
         paths: ["/components/component[name=*]/state/temperature"]
         stream-mode: sample
         sample-interval: 60s
+      components_componentname_transceiver_state:
+        paths: ["/components/component[name=*]/transceiver/state"]
+        stream-mode: sample
+        sample-interval: 60s
       network-instances_network-instance_protocols_protocol_bgp_neighbors_neighborneighbor-address_state:
         paths: ["/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/state"]
         stream-mode: on-change

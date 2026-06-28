@@ -47,6 +47,8 @@ type metricSpec struct {
 func pctFmt(v float64) string { return fmt.Sprintf("%.0f%%", v) }
 func gbFmt(v float64) string  { return fmt.Sprintf("%.2f GB", v) }
 func cFmt(v float64) string   { return fmt.Sprintf("%.0f °C", v) }
+func dbmFmt(v float64) string { return fmt.Sprintf("%.2f dBm", v) }
+func maFmt(v float64) string  { return fmt.Sprintf("%.1f mA", v) }
 
 // graphMetrics is the registry the drill-down endpoint and health panels share.
 var graphMetrics = map[string]metricSpec{
@@ -60,6 +62,10 @@ var graphMetrics = map[string]metricSpec{
 	}, cFmt},
 	"in":   {"Throughput in", "#a371f7", func(s, _ string) string { return fmt.Sprintf(`8*sum(rate(interfaces_interface_state_counters_in_octets{source=%q}[1m]))`, s) }, bps},
 	"out":  {"Throughput out", "#f778ba", func(s, _ string) string { return fmt.Sprintf(`8*sum(rate(interfaces_interface_state_counters_out_octets{source=%q}[1m]))`, s) }, bps},
+	// Optics (per transceiver component); iface carries the component_name.
+	"optic_rx":   {"Rx power", "#3fb950", func(s, c string) string { return fmt.Sprintf(`components_component_transceiver_state_input_power_instant{source=%q,component_name=%q}`, s, c) }, dbmFmt},
+	"optic_tx":   {"Tx power", "#a371f7", func(s, c string) string { return fmt.Sprintf(`components_component_transceiver_state_output_power_instant{source=%q,component_name=%q}`, s, c) }, dbmFmt},
+	"optic_bias": {"Laser bias", "#d29922", func(s, c string) string { return fmt.Sprintf(`components_component_transceiver_state_laser_bias_current_instant{source=%q,component_name=%q}`, s, c) }, maFmt},
 }
 
 // trafficGraph builds the device-wide overall in/out dual sparkline (the page
@@ -163,6 +169,71 @@ func buildHealth(mc *metrics.Client, source string) []graph {
 		}
 	}
 	return gs
+}
+
+// optic is one transceiver's light-level reading, with the Rx-power health class.
+type optic struct {
+	Port     string // component_name, e.g. FPC0:PIC1:PORT0:Xcvr0
+	Rx       string
+	Tx       string
+	Bias     string
+	RxClass  string // ok | warn | bad — colours the value, also drives alarms
+	HasRx    bool
+	SVG      template.HTML // Rx-power sparkline (drill-down clickable)
+}
+
+// opticRxStatus classifies receive optical power (dBm) into a health class using
+// SFP/SFP+ rule-of-thumb bands. TODO: per-transceiver thresholds as content
+// (this is the dBm case of the LibreNMS 4-threshold sensor model).
+func opticRxStatus(dbm float64) string {
+	switch {
+	case dbm < -19 || dbm > -1.0: // near loss-of-light, or receiver overload
+		return "bad"
+	case dbm < -14 || dbm > -2.5:
+		return "warn"
+	default:
+		return "ok"
+	}
+}
+
+// buildOptics renders the device Optics tab: one row per lit transceiver with Rx /
+// Tx / laser-bias and an Rx-power sparkline. Rx is health-coloured by threshold.
+func buildOptics(mc *metrics.Client, source string) []optic {
+	rx := mc.VectorBy(fmt.Sprintf(`components_component_transceiver_state_input_power_instant{source=%q}`, source), "component_name")
+	tx := mc.VectorBy(fmt.Sprintf(`components_component_transceiver_state_output_power_instant{source=%q}`, source), "component_name")
+	bias := mc.VectorBy(fmt.Sprintf(`components_component_transceiver_state_laser_bias_current_instant{source=%q}`, source), "component_name")
+
+	names := map[string]bool{}
+	for n := range rx {
+		names[n] = true
+	}
+	for n := range tx {
+		names[n] = true
+	}
+	ordered := make([]string, 0, len(names))
+	for n := range names {
+		ordered = append(ordered, n)
+	}
+	sort.Strings(ordered)
+
+	out := make([]optic, 0, len(ordered))
+	for _, n := range ordered {
+		o := optic{Port: n, Rx: "—", Tx: "—", Bias: "—"}
+		if v, ok := rx[n]; ok {
+			o.Rx, o.HasRx, o.RxClass = dbmFmt(v), true, opticRxStatus(v)
+		}
+		if v, ok := tx[n]; ok {
+			o.Tx = dbmFmt(v)
+		}
+		if v, ok := bias[n]; ok {
+			o.Bias = maFmt(v)
+		}
+		if vals, ok := mc.RangeQuery(graphMetrics["optic_rx"].promql(source, n), graphDur, graphStep); ok {
+			o.SVG = chart.Line(vals, graphW, graphH, "#3fb950")
+		}
+		out = append(out, o)
+	}
+	return out
 }
 
 // ---- drill-down detail ----

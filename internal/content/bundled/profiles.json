@@ -2,33 +2,148 @@
   {
     "id": "openconfig.base",
     "subscriptions": [
-      {"path":"/interfaces/interface[name=*]/state/counters","mode":"sample","interval_sec":30,"group":"base","est_series":1000},
-      {"path":"/interfaces/interface[name=*]/state/oper-status","mode":"on_change","group":"base","est_series":100},
-      {"path":"/system/cpus/cpu[index=*]/state","mode":"sample","interval_sec":60,"group":"base","est_series":12},
-      {"path":"/system/memory/state","mode":"sample","interval_sec":60,"group":"base","est_series":3},
-      {"path":"/components/component[name=*]/state/temperature","mode":"sample","interval_sec":60,"group":"base","est_series":60}
+      {
+        "path": "/interfaces/interface[name=*]/state/counters",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 1000
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state/oper-status",
+        "mode": "on_change",
+        "group": "base",
+        "est_series": 100
+      },
+      {
+        "path": "/system/cpus/cpu[index=*]/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 12
+      },
+      {
+        "path": "/system/memory/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 3
+      },
+      {
+        "path": "/components/component[name=*]/state/temperature",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 60
+      }
     ]
   },
   {
     "id": "juniper.mx304",
     "subscriptions": [
-      {"path":"/interfaces/interface[name=*]/state/counters","mode":"sample","interval_sec":30,"group":"base","est_series":1000},
-      {"path":"/interfaces/interface[name=*]/state/oper-status","mode":"on_change","group":"base","est_series":100},
-      {"path":"/system/cpus/cpu[index=*]/state","mode":"sample","interval_sec":60,"group":"base","est_series":12},
-      {"path":"/system/memory/state","mode":"sample","interval_sec":60,"group":"base","est_series":3},
-      {"path":"/components/component[name=*]/state/temperature","mode":"sample","interval_sec":60,"group":"base","est_series":60},
-      {"path":"/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/state","mode":"on_change","group":"base","est_series":400},
-      {"path":"/junos/system/linecard/qmon-sw/queue/state","mode":"sample","interval_sec":30,"group":"optin:qos","est_series":960}
+      {
+        "path": "/interfaces/interface[name=*]/state/counters",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 1000
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state/oper-status",
+        "mode": "on_change",
+        "group": "base",
+        "est_series": 100
+      },
+      {
+        "path": "/system/cpus/cpu[index=*]/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 12
+      },
+      {
+        "path": "/system/memory/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 3
+      },
+      {
+        "path": "/components/component[name=*]/state/temperature",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 60
+      },
+      {
+        "path": "/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/state",
+        "mode": "on_change",
+        "group": "base",
+        "est_series": 400
+      },
+      {
+        "path": "/junos/system/linecard/qmon-sw/queue/state",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "optin:qos",
+        "est_series": 960
+      },
+      {
+        "path": "/components/component[name=*]/transceiver/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 9
+      }
     ]
   },
   {
     "id": "juniper.ex4100",
     "subscriptions": [
-      {"path":"/interfaces/interface[name=*]/state/counters","mode":"sample","interval_sec":30,"group":"base","est_series":384,"drop":["out-queue"]},
-      {"path":"/interfaces/interface[name=*]/state/oper-status","mode":"on_change","group":"base","est_series":39},
-      {"path":"/system/cpus/cpu[index=*]/state","mode":"sample","interval_sec":60,"group":"base","est_series":28},
-      {"path":"/system/memory/state","mode":"sample","interval_sec":60,"group":"base","est_series":4},
-      {"path":"/components/component[name=*]/state/temperature","mode":"sample","interval_sec":60,"group":"base","est_series":2}
+      {
+        "path": "/interfaces/interface[name=*]/state/counters",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 384,
+        "drop": [
+          "out-queue"
+        ]
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state/oper-status",
+        "mode": "on_change",
+        "group": "base",
+        "est_series": 39
+      },
+      {
+        "path": "/system/cpus/cpu[index=*]/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 28
+      },
+      {
+        "path": "/system/memory/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 4
+      },
+      {
+        "path": "/components/component[name=*]/state/temperature",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 2
+      },
+      {
+        "path": "/components/component[name=*]/transceiver/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 9
+      }
     ]
   }
 ]
