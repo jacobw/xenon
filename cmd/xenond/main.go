@@ -21,6 +21,7 @@ import (
 	"xenon/internal/inventory"
 	"xenon/internal/metrics"
 	"xenon/internal/model"
+	"xenon/internal/persist"
 	"xenon/internal/probe"
 )
 
@@ -98,7 +99,20 @@ func main() {
 	if err != nil {
 		log.Fatal("load content: ", err)
 	}
-	inv := inventory.NewStore(store)
+	dbPath := os.Getenv("XENON_DB")
+	if dbPath == "" {
+		dbPath = "xenon.db"
+	}
+	db, err := persist.Open(dbPath)
+	if err != nil {
+		log.Fatal("open device store: ", err)
+	}
+	defer db.Close()
+	log.Printf("device store: SQLite at %s", dbPath)
+	inv, err := inventory.NewStore(store, db)
+	if err != nil {
+		log.Fatal("load inventory: ", err)
+	}
 	mc := metrics.New(os.Getenv("XENON_PROM"))
 	if mc.Enabled() {
 		log.Printf("read-plane: Prometheus at %s", os.Getenv("XENON_PROM"))
@@ -236,7 +250,10 @@ func main() {
 			return
 		}
 		o := inv.Preview(res.Sig, res.Hostname, res.Addr)
-		inv.Add(o)
+		if err := inv.Add(o); err != nil {
+			render(w, "detect-error", map[string]string{"Err": "Could not save device: " + err.Error()})
+			return
+		}
 		w.Header().Set("HX-Redirect", "/device/"+o.Device.ID)
 		w.WriteHeader(http.StatusOK)
 	})

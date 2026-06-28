@@ -57,6 +57,10 @@ XENON_PROM=http://localhost:9090 go run ./cmd/xenond   # + live graphs/alarms fr
 For the full live experience, point `XENON_PROM` at a Prometheus that scrapes a
 gnmic collector whose targets come from xenond's `GET /gnmic/targets`.
 
+Environment: `XENON_ADDR` (listen, default `:8080`), `XENON_PROM` (Prometheus URL;
+read plane is disabled if unset), `XENON_DB` (SQLite path, default `xenon.db`),
+`GNMIC_USERNAME`/`GNMIC_PASSWORD` (credentials for live onboarding).
+
 ## Deploy
 
 A container image and a Helm chart ([`charts/xenon`](charts/xenon)) are published to
@@ -81,7 +85,9 @@ Design docs live in [`docs/`](docs/) — start with `goals.md`, `architecture.md
 
 ## Status & caveats
 
-Prototype. Current limitations: inventory and alarms are in-memory (no persistence);
+Prototype. The inventory is persisted in embedded SQLite (`XENON_DB`, on a PVC in
+the chart), so onboarded devices survive restarts. Current limitations: alarm state
+is still in-memory;
 operational status is derived from Prometheus liveness (the gNMIc session-state
 signal isn't wired yet); the per-device metric labels are applied at the Prometheus
 scrape for a single device (production attaches them per-target from the generated

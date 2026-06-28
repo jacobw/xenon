@@ -9,6 +9,14 @@ xenond:
     requests: {cpu: 25m, memory: 32Mi}
     limits: {cpu: 250m, memory: 128Mi}
 
+# xenond owns its inventory in an embedded SQLite DB on this volume, so devices
+# onboarded in the GUI survive restarts/upgrades. Set existingClaim to reuse a PVC.
+persistence:
+  enabled: true
+  storageClass: longhorn
+  size: 256Mi
+  existingClaim: ""
+
 gnmic:
   image: ghcr.io/openconfig/gnmic:0.46.0
   loaderInterval: 15s

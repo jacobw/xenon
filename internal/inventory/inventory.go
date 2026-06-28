@@ -9,6 +9,7 @@ import (
 
 	"xenon/internal/content"
 	"xenon/internal/model"
+	"xenon/internal/persist"
 	"xenon/internal/telemetry"
 )
 
@@ -31,6 +32,14 @@ type seed struct {
 	sig    model.Signature
 	optIns []string
 	tags   map[string]string
+}
+
+func (s seed) record() persist.DeviceRecord {
+	return persist.DeviceRecord{Name: s.name, Mgmt: s.mgmt, Sig: s.sig, OptIns: s.optIns, Tags: s.tags}
+}
+
+func seedOf(r persist.DeviceRecord) seed {
+	return seed{name: r.Name, mgmt: r.Mgmt, sig: r.Sig, optIns: r.OptIns, tags: r.Tags}
 }
 
 // seeds is the prototype's starting inventory — example devices that exercise the
@@ -91,21 +100,47 @@ func onboard(s seed, store *content.Store) Onboarded {
 	return o
 }
 
-// Store is the in-memory M1 inventory (prototype): seeded at construction and
-// mutable via Add (onboarding).
+// Store is the M1 inventory: an in-memory view kept consistent with a persistent
+// device store (SQLite). It is mutable via Add (onboarding).
 type Store struct {
 	mu      sync.RWMutex
 	content *content.Store
+	db      *persist.Store
 	devices []Onboarded
 }
 
-// NewStore builds a store seeded with the starting devices.
-func NewStore(c *content.Store) *Store {
-	s := &Store{content: c}
-	for _, sd := range seeds() {
-		s.devices = append(s.devices, onboard(sd, c))
+// NewStore builds the inventory from the persistent store db (which may be nil for
+// an ephemeral, in-memory store, e.g. in tests). On first run (empty db) it seeds
+// the example devices and persists them; thereafter it loads whatever was onboarded.
+func NewStore(c *content.Store, db *persist.Store) (*Store, error) {
+	s := &Store{content: c, db: db}
+
+	var records []persist.DeviceRecord
+	if db != nil {
+		n, err := db.Count()
+		if err != nil {
+			return nil, err
+		}
+		if n == 0 {
+			for _, sd := range seeds() {
+				if err := db.Upsert(sd.record()); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if records, err = db.List(); err != nil {
+			return nil, err
+		}
+	} else {
+		for _, sd := range seeds() {
+			records = append(records, sd.record())
+		}
 	}
-	return s
+
+	for _, r := range records {
+		s.devices = append(s.devices, onboard(seedOf(r), c))
+	}
+	return s, nil
 }
 
 // List returns the inventory ordered by hostname.
@@ -136,15 +171,29 @@ func (s *Store) Preview(sig model.Signature, host, mgmt string) Onboarded {
 	return onboard(seed{name: host, mgmt: mgmt, sig: sig}, s.content)
 }
 
-// Add stores an onboarded device, replacing any existing one with the same id.
-func (s *Store) Add(o Onboarded) {
+// Add persists an onboarded device and updates the in-memory view, replacing any
+// existing one with the same id. Persistence happens first so a write failure
+// surfaces instead of silently losing the device on the next restart.
+func (s *Store) Add(o Onboarded) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.db != nil {
+		rec := persist.DeviceRecord{
+			Name: o.Device.Hostname, Mgmt: o.Device.MgmtAddress,
+			Sig: o.Signature, OptIns: o.Device.OptIns, Tags: o.Device.Tags,
+		}
+		if err := s.db.Upsert(rec); err != nil {
+			return err
+		}
+	}
+
 	for i := range s.devices {
 		if s.devices[i].Device.ID == o.Device.ID {
 			s.devices[i] = o
-			return
+			return nil
 		}
 	}
 	s.devices = append(s.devices, o)
+	return nil
 }

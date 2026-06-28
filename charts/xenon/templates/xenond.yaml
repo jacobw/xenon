@@ -5,6 +5,9 @@ metadata:
   labels: {app: xenond}
 spec:
   replicas: 1
+  # SQLite lives on an RWO volume, which a single pod must own; Recreate stops the
+  # old pod before the new one mounts it (a rolling update would deadlock).
+  strategy: {type: Recreate}
   selector:
     matchLabels: {app: xenond}
   template:
@@ -20,6 +23,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - {name: XENON_ADDR, value: ":8080"}
+            - {name: XENON_DB, value: "/data/xenon.db"}
             - name: XENON_PROM
               value: "http://prometheus.{{ .Release.Namespace }}.svc.cluster.local:9090"
             # Credentials for live onboarding (xenond's embedded gNMI client).
@@ -38,6 +42,28 @@ spec:
             httpGet: {path: /, port: 8080}
             initialDelaySeconds: 10
           resources: {{ toYaml .Values.xenond.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default "xenond-data" }}
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xenond-data
+  labels: {app: xenond}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- with .Values.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service
