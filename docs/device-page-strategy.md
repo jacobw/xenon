@@ -93,13 +93,19 @@ container, and Junos streams whole containers, so it needs its own subscription.
    sensor/threshold backbone end to end.
 2. ✅ **Port errors (v0.1.9)** — errors/discards column + port-drill error chart +
    interface-errors alarm. (No collection change — already in `counters`.)
-   *Deferred to the enum/state pass: oper-status up/down, link speed.*
-3. **State/enum handling** — gnmic enum→state-metric processor; unlocks port
-   status, admin-status, the `state` sensor class.
-4. **Health sensors** — fans / PSU / voltage / power (discover Junos coverage) and
+3. ✅ **State/enum handling (v0.1.10–11)** — gnmic `strings-as-labels` emits enums as
+   state-set metrics; Ports tab shows **UP/DOWN status** (down ports listed). Key
+   rule: state leaves must be `sample` mode, not `on-change`, or they expire.
+4. ✅ **Routing/BGP (v0.1.12)** — neighbours tab: neighbor·VRF·peer-AS·**state pill**·
+   flaps, from `session_state` (state-set) + numeric peer-as/transitions. Validated
+   with a live gobgpd peer ([[gobgpd-bgp-test-harness]]).
+5. **Link speed (DEFERRED)** — `high_speed` is a static leaf: leaf-subset subs are
+   ignored by Junos, and via `/state` it's sent once at sync then expires; can't use
+   `expiration:0` (breaks state-sets). Needs a **separate long-expiration prometheus
+   output** for static/inventory leaves (then Prometheus scrapes both).
+6. **Health sensors** — fans / PSU / voltage / power (discover Junos coverage) and
    generalise the sensor+threshold framework across all classes.
-5. **Routing** — BGP neighbours tab (session state, accepted/advertised prefixes).
-6. **Neighbours + Inventory** — LLDP topology, hardware/serial tree.
+7. **Neighbours + Inventory** — LLDP topology, hardware/serial tree.
 
 Sources: [LibreNMS device page (NSRC lab)](https://nsrc.org/workshops/2016/rwnog-nmm/netmgmt/en/librenms/librenms-lab-1.htm),
 [Health Information](https://docs.librenms.org/Developing/os/Health-Information/),
