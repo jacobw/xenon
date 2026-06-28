@@ -74,16 +74,32 @@ QSFP would add a `channel_index`).
 - Health renders sensors grouped by class, each with current value, band, and
   sparkline.
 
-## 5. Roadmap
+## 5. The enum/state gap (grounded on sw1)
 
-1. **Optics (now)** — collect + Optics section + `dBm` thresholds + low-Rx alarm
-   rule. Proves the sensor/threshold backbone end to end.
-2. **Port detail** — errors/discards + status + speed; port drill gains an error
-   graph; ports list gains status + speed columns.
-3. **Health sensors** — fans / PSU / voltage / power (discover Junos coverage) and
+gnmic's Prometheus output **drops non-numeric values**, so OpenConfig **enum/string
+leaves never become metrics**: `oper-status` (UP/DOWN), `admin-status`, ethernet
+`port-speed` (`SPEED_1GB`), transceiver `form-factor`/`present` are all absent from
+Prometheus. This blocks LibreNMS's port up/down dot and the `state` sensor class.
+
+Fix (a dedicated pass): a gnmic processor that maps enums → a numeric `state` metric
+carrying the string as a label (e.g. `…oper_status{state="UP"} 1`) — the standard
+Prometheus state-set pattern. Numeric speed is available as
+`interfaces_interface_state_high_speed` (Mbps) but lives outside the `counters`
+container, and Junos streams whole containers, so it needs its own subscription.
+
+## 6. Roadmap
+
+1. ✅ **Optics (v0.1.8)** — Optics tab, `dBm` thresholds, low-Rx alarm. Proves the
+   sensor/threshold backbone end to end.
+2. ✅ **Port errors (v0.1.9)** — errors/discards column + port-drill error chart +
+   interface-errors alarm. (No collection change — already in `counters`.)
+   *Deferred to the enum/state pass: oper-status up/down, link speed.*
+3. **State/enum handling** — gnmic enum→state-metric processor; unlocks port
+   status, admin-status, the `state` sensor class.
+4. **Health sensors** — fans / PSU / voltage / power (discover Junos coverage) and
    generalise the sensor+threshold framework across all classes.
-4. **Routing** — BGP neighbours tab (session state, accepted/advertised prefixes).
-5. **Neighbours + Inventory** — LLDP topology, hardware/serial tree.
+5. **Routing** — BGP neighbours tab (session state, accepted/advertised prefixes).
+6. **Neighbours + Inventory** — LLDP topology, hardware/serial tree.
 
 Sources: [LibreNMS device page (NSRC lab)](https://nsrc.org/workshops/2016/rwnog-nmm/netmgmt/en/librenms/librenms-lab-1.htm),
 [Health Information](https://docs.librenms.org/Developing/os/Health-Information/),
