@@ -11,9 +11,10 @@
       },
       {
         "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "on_change",
+        "mode": "sample",
         "group": "base",
-        "est_series": 100
+        "est_series": 100,
+        "interval_sec": 30
       },
       {
         "path": "/system/cpus/cpu[index=*]/state",
@@ -50,9 +51,10 @@
       },
       {
         "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "on_change",
+        "mode": "sample",
         "group": "base",
-        "est_series": 100
+        "est_series": 100,
+        "interval_sec": 30
       },
       {
         "path": "/system/cpus/cpu[index=*]/state",
@@ -112,9 +114,10 @@
       },
       {
         "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "on_change",
+        "mode": "sample",
         "group": "base",
-        "est_series": 39
+        "est_series": 39,
+        "interval_sec": 30
       },
       {
         "path": "/system/cpus/cpu[index=*]/state",
