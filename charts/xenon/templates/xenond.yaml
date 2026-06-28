@@ -22,6 +22,14 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
+      # distroless nonroot runs as uid/gid 65532; fsGroup makes the kubelet set
+      # the SQLite volume group-writable so xenond can create /data/xenon.db
+      # (without it SQLite fails with CANTOPEN / "unable to open database file").
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
       containers:
         - name: xenond
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
