@@ -5,9 +5,14 @@ metadata:
   labels: {app: xenond}
 spec:
   replicas: 1
-  # SQLite lives on an RWO volume, which a single pod must own; Recreate stops the
-  # old pod before the new one mounts it (a rolling update would deadlock).
-  strategy: {type: Recreate}
+  # SQLite lives on an RWO volume, which a single pod must own. maxSurge:0 forces
+  # the old pod to terminate (releasing the volume) before the new one is created
+  # — the RWO-safe equivalent of Recreate, but it keeps strategy.type unchanged so
+  # server-side-apply upgrades from a prior RollingUpdate revision don't fail with
+  # "rollingUpdate may not be specified when type is Recreate".
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 0, maxUnavailable: 1}
   selector:
     matchLabels: {app: xenond}
   template:
