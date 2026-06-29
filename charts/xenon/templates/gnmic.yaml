@@ -12,12 +12,16 @@ data:
     skip-verify: true
     encoding: json
     subscriptions:
-      interfaces_interfacename_state:
-        # Whole interface /state in one sub: counters + high-speed (link speed) +
-        # oper/admin-status (strings-as-labels state-sets). out-queue is dropped by
-        # the output processor. Directly-subscribed /state is re-sent each sample,
-        # so the static high-speed leaf persists (it wouldn't via /state/counters).
-        paths: ["/interfaces/interface[name=*]/state"]
+      interfaces_interfacename_state_counters:
+        paths: ["/interfaces/interface[name=*]/state/counters"]
+        stream-mode: sample
+        sample-interval: 30s
+      interfaces_interfacename_state_oper-status:
+        # sample (not on-change): a scrape model needs the value refreshed each
+        # interval, else the strings-as-labels state metric expires.
+        # NB: the full /state sub was tried for link speed but Junos suppresses
+        # unchanged leaves there, regressing idle-interface counters — reverted.
+        paths: ["/interfaces/interface[name=*]/state/oper-status"]
         stream-mode: sample
         sample-interval: 30s
       system_cpus_cpuindex_state:

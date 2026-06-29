@@ -47,7 +47,6 @@ type port struct {
 	Name        string
 	Status      string // UP / DOWN (from oper-status state-set); "" if unknown
 	StatusClass string // ok | bad
-	Speed       string // link speed, e.g. 1G (from high-speed); "—" if unknown
 	In          string
 	Out         string
 	Err         string
@@ -86,18 +85,6 @@ func gbFmt(v float64) string  { return fmt.Sprintf("%.2f GB", v) }
 func cFmt(v float64) string   { return fmt.Sprintf("%.0f °C", v) }
 func dbmFmt(v float64) string { return fmt.Sprintf("%.2f dBm", v) }
 func maFmt(v float64) string  { return fmt.Sprintf("%.1f mA", v) }
-
-// speedFmt renders an interface high-speed value (Mbps) as e.g. 1G / 10G / 100M.
-func speedFmt(mbps float64) string {
-	switch {
-	case mbps <= 0:
-		return "—"
-	case mbps >= 1000:
-		return strings.TrimSuffix(fmt.Sprintf("%.1f", mbps/1000), ".0") + "G"
-	default:
-		return fmt.Sprintf("%.0fM", mbps)
-	}
-}
 
 // graphMetrics is the registry the drill-down endpoint and health panels share.
 var graphMetrics = map[string]metricSpec{
@@ -167,7 +154,6 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	in := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q}[1m])`, source), "interface_name")
 	out := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q}[1m])`, source), "interface_name")
 	errs := mc.VectorBy(errRateQuery(source, ""), "interface_name")
-	speed := mc.VectorBy(fmt.Sprintf(`interfaces_interface_state_high_speed{source=%q}`, source), "interface_name")
 	status := map[string]string{}
 	for _, l := range mc.VectorFull(fmt.Sprintf(`interfaces_interface_state_oper_status{source=%q}`, source)) {
 		if n := l.Labels["interface_name"]; n != "" {
@@ -188,7 +174,7 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	}
 	ps := make([]port, 0, len(names))
 	for n := range names {
-		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", Speed: speedFmt(speed[n]), tot: in[n] + out[n]}
+		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
 		if e := errs[n]; e > 0 {
 			p.Err, p.ErrClass = fmt.Sprintf("%.2f/s", e), "bad"
 		}
