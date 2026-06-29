@@ -96,16 +96,21 @@ container, and Junos streams whole containers, so it needs its own subscription.
 3. ✅ **State/enum handling (v0.1.10–11)** — gnmic `strings-as-labels` emits enums as
    state-set metrics; Ports tab shows **UP/DOWN status** (down ports listed). Key
    rule: state leaves must be `sample` mode, not `on-change`, or they expire.
-4. ✅ **Routing/BGP (v0.1.12)** — neighbours tab: neighbor·VRF·peer-AS·**state pill**·
-   flaps, from `session_state` (state-set) + numeric peer-as/transitions. Validated
-   with a live gobgpd peer ([[gobgpd-bgp-test-harness]]).
-5. **Link speed (DEFERRED)** — `high_speed` is a static leaf: leaf-subset subs are
-   ignored by Junos, and via `/state` it's sent once at sync then expires; can't use
-   `expiration:0` (breaks state-sets). Needs a **separate long-expiration prometheus
-   output** for static/inventory leaves (then Prometheus scrapes both).
-6. **Health sensors** — fans / PSU / voltage / power (discover Junos coverage) and
-   generalise the sensor+threshold framework across all classes.
-7. **Neighbours + Inventory** — LLDP topology, hardware/serial tree.
+4. ✅ **Routing/BGP (v0.1.12–14)** — neighbours tab: neighbor·VRF·peer-AS·**state
+   pill**·**prefixes rx/tx**·flaps, from `session_state` (state-set) + numeric
+   peer-as/transitions + afi-safi prefix **counts**. Validated with a live gobgpd
+   peer ([[gobgpd-bgp-test-harness]]). *Prefix counts only — actual prefixes (the
+   RIB) are never stored in Prometheus (per-route cardinality; wrong tool).*
+5. ✅ **Health — component status (v0.1.15)** — `/components/component/state` gives
+   oper-status (PSU/cards/FRU: ACTIVE/DISABLED) + inventory. sw1 exposes **no fans /
+   PSU-electrical** via OC, so component status + temperature is the hw-health view.
+6. **Link speed (recoverable, not yet done)** — `high_speed` expired only because
+   it's a *sync-only sibling* of the `/state/counters` sub; **directly-subscribed
+   `/state` is re-sent each sample** (confirmed). Fix = widen the interface sub to
+   `/interfaces/interface[name=*]/state` (carries speed + admin-status), mind the
+   added cardinality. (Supersedes the earlier "separate output" idea.)
+7. **Neighbours + Inventory** — LLDP topology; the hardware/serial inventory data is
+   now already collected via the component `/state` sub (just needs a tab).
 
 Sources: [LibreNMS device page (NSRC lab)](https://nsrc.org/workshops/2016/rwnog-nmm/netmgmt/en/librenms/librenms-lab-1.htm),
 [Health Information](https://docs.librenms.org/Developing/os/Health-Information/),
