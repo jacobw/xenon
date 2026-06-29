@@ -303,19 +303,36 @@ type component struct {
 	Class  string // ok | warn | bad
 }
 
+// failableComponentTypes are the chassis subsystems whose failure has operational
+// impact — the OpenConfig analogue of LibreNMS's jnxFruState monitoring. Everything
+// else (CHASSIS, CPU, PORT, TRANSCEIVER, SENSOR, MEZZ, generic FRU…) either can't
+// meaningfully fail or is monitored elsewhere (interface status, optics, temp, cpu).
+// See docs/health-monitoring-strategy.md.
+var failableComponentTypes = map[string]bool{
+	"POWER_SUPPLY":    true,
+	"FAN":             true,
+	"LINECARD":        true,
+	"CONTROLLER_CARD": true,
+	"FABRIC":          true,
+}
+
+// componentStatusClass maps an OpenConfig component oper-status to a health class,
+// mirroring the jnxFruState mapping: active=ok, disabled/empty=warn (absent or
+// unpowered — worth a look, not a hard fault), anything else=critical.
 func componentStatusClass(s string) string {
 	switch s {
 	case "ACTIVE", "ENABLED":
 		return "ok"
-	case "DISABLED", "INACTIVE", "STANDBY":
-		return "warn" // usually an unused/standby slot, not a fault
+	case "DISABLED", "STANDBY", "INACTIVE":
+		return "warn"
 	default:
 		return "bad"
 	}
 }
 
-// buildComponents lists chassis-level components (power supplies, cards, FRUs) and
-// their oper-status. Ports/transceivers are excluded — they have their own tabs.
+// buildComponents lists the device's FAILABLE subsystems (power supplies, fans,
+// line cards, REs, fabric) with their oper-status — the hardware-health view.
+// Non-failable / elsewhere-monitored components are excluded by design.
 func buildComponents(mc *metrics.Client, source string) []component {
 	typ := map[string]string{}
 	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_type{source=%q}`, source)) {
@@ -326,7 +343,7 @@ func buildComponents(mc *metrics.Client, source string) []component {
 	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_oper_status{source=%q}`, source)) {
 		n := l.Labels["component_name"]
 		t := typ[n]
-		if n == "" || seen[n] || t == "PORT" || t == "TRANSCEIVER" {
+		if n == "" || seen[n] || !failableComponentTypes[t] {
 			continue
 		}
 		seen[n] = true
