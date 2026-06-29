@@ -5,11 +5,13 @@ import (
 	"sort"
 
 	"xenon/internal/metrics"
+	"xenon/internal/probe"
 )
 
 // bgpPeer is one BGP neighbour row for the Routing tab.
 type bgpPeer struct {
 	Neighbor    string
+	Desc        string // neighbour description (from app metadata)
 	Network     string // network-instance (VRF) name
 	PeerAS      string
 	State       string // ESTABLISHED / ACTIVE / IDLE / …
@@ -41,7 +43,7 @@ func bgpStateClass(s string) string {
 
 // buildRouting reads BGP neighbours for a device from the state-set session-state
 // metric (strings-as-labels), joined with numeric peer-as and flap count.
-func buildRouting(mc *metrics.Client, source string) []bgpPeer {
+func buildRouting(mc *metrics.Client, source string, meta probe.Meta) []bgpPeer {
 	peerAS := mc.VectorBy(fmt.Sprintf(bgpBase+`peer_as{source=%q}`, source), "neighbor_neighbor_address")
 	trans := mc.VectorBy(fmt.Sprintf(bgpBase+`established_transitions{source=%q}`, source), "neighbor_neighbor_address")
 	// Prefix COUNTS only (a gauge per neighbour) — summed across afi-safis. The
@@ -65,6 +67,7 @@ func buildRouting(mc *metrics.Client, source string) []bgpPeer {
 		}
 		p := bgpPeer{
 			Neighbor:   nb,
+			Desc:       meta.BGP[nb],
 			Network:    l.Labels["network_instance_name"],
 			State:      l.Labels["session_state"],
 			StateClass: bgpStateClass(l.Labels["session_state"]),

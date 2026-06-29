@@ -10,6 +10,7 @@ import (
 
 	"xenon/internal/chart"
 	"xenon/internal/metrics"
+	"xenon/internal/probe"
 )
 
 // errRateQuery is the combined in+out error+discard rate (per second). With iface
@@ -45,6 +46,7 @@ type graph struct {
 // port is one interface row for the ports table, with a mini in/out sparkline.
 type port struct {
 	Name        string
+	Desc        string // interface description (from app metadata)
 	Status      string // UP / DOWN (from oper-status state-set); "" if unknown
 	StatusClass string // ok | bad
 	In          string
@@ -150,7 +152,7 @@ func buildGraphs(mc *metrics.Client, source string) []graph {
 	return gs
 }
 
-func buildPorts(mc *metrics.Client, source string) []port {
+func buildPorts(mc *metrics.Client, source string, meta probe.Meta) []port {
 	in := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_in_octets{source=%q}[1m])`, source), "interface_name")
 	out := mc.VectorBy(fmt.Sprintf(`8*rate(interfaces_interface_state_counters_out_octets{source=%q}[1m])`, source), "interface_name")
 	errs := mc.VectorBy(errRateQuery(source, ""), "interface_name")
@@ -174,7 +176,7 @@ func buildPorts(mc *metrics.Client, source string) []port {
 	}
 	ps := make([]port, 0, len(names))
 	for n := range names {
-		p := port{Name: n, In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
+		p := port{Name: n, Desc: meta.Interfaces[n], In: bps(in[n]), Out: bps(out[n]), Err: "0", tot: in[n] + out[n]}
 		if e := errs[n]; e > 0 {
 			p.Err, p.ErrClass = fmt.Sprintf("%.2f/s", e), "bad"
 		}

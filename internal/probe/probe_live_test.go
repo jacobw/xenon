@@ -19,3 +19,18 @@ func TestLiveProbe(t *testing.T) {
 		t.Fatalf("probe failed: %v", err)
 	}
 }
+
+func TestLiveDescriptions(t *testing.T) {
+	addr := os.Getenv("PROBE_ADDR")
+	if addr == "" {
+		t.Skip("set PROBE_ADDR to run")
+	}
+	m, err := Descriptions(addr, Creds{Username: os.Getenv("GNMIC_USERNAME"), Password: os.Getenv("GNMIC_PASSWORD")})
+	if err != nil {
+		t.Fatalf("descriptions: %v", err)
+	}
+	t.Logf("interfaces with desc=%d, bgp neighbours with desc=%d", len(m.Interfaces), len(m.BGP))
+	for k, v := range m.BGP {
+		t.Logf("  bgp %s = %q", k, v)
+	}
+}

@@ -60,7 +60,7 @@
     {{range .Ports}}
     <tr class="clickable" hx-get="/device/{{$id}}/graph?m=port&iface={{.Name | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
       <td>{{if .Status}}<span class="pill {{.StatusClass}}">{{.Status}}</span>{{else}}<span class="mut">—</span>{{end}}</td>
-      <td class="mono">{{.Name}}</td>
+      <td class="mono">{{.Name}}{{if .Desc}}<div class="mut" style="font-size:11px;font-weight:400">{{.Desc}}</div>{{end}}</td>
       <td>{{with .SVG}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
       <td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
       <td style="text-align:right" class="mono {{if .ErrClass}}lvl-bad{{else}}mut{{end}}">{{.Err}}</td>
@@ -97,7 +97,7 @@
     <tbody>
     {{range .Routing}}
     <tr class="clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML">
-      <td class="mono">{{.Neighbor}}</td>
+      <td class="mono">{{.Neighbor}}{{if .Desc}}<div class="mut" style="font-size:11px">{{.Desc}}</div>{{end}}</td>
       <td class="mono mut">{{.Network}}</td>
       <td style="text-align:right" class="mono">{{.PeerAS}}</td>
       <td><span class="pill {{.StateClass}}">{{.State}}</span></td>

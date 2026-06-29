@@ -138,6 +138,8 @@ func main() {
 	alarmStore := alarms.NewStore(store.Alerts)
 	go alarmStore.Run(mc, 15*time.Second)
 	onboardCreds := probe.Creds{Username: os.Getenv("GNMIC_USERNAME"), Password: os.Getenv("GNMIC_PASSWORD")}
+	meta := newMetaStore(onboardCreds)
+	go meta.run(inv, 15*time.Minute) // capture interface/BGP descriptions out-of-band
 
 	mux := http.NewServeMux()
 
@@ -171,11 +173,11 @@ func main() {
 		dd := deviceData{Title: o.Device.Hostname, Dev: o, Op: deviceOp(mc, src), Tab: tab}
 		switch tab {
 		case "ports":
-			dd.Ports = buildPorts(mc, src)
+			dd.Ports = buildPorts(mc, src, meta.get(src))
 		case "optics":
 			dd.Optics = buildOptics(mc, src)
 		case "routing":
-			dd.Routing = buildRouting(mc, src)
+			dd.Routing = buildRouting(mc, src, meta.get(src))
 		case "inventory":
 			dd.Inventory = buildInventory(mc, src)
 		case "health":
@@ -206,7 +208,7 @@ func main() {
 			return
 		}
 		q := r.URL.Query()
-		gv, ok := buildGraphView(o.Device.ID, q.Get("m"), q.Get("iface"), q.Get("r"))
+		gv, ok := buildGraphView(o.Device.ID, q.Get("m"), q.Get("iface"), q.Get("r"), meta.get(o.Device.MgmtAddress))
 		if !ok {
 			render(w, "graph-empty", nil)
 			return
@@ -296,6 +298,7 @@ func main() {
 			return
 		}
 		o := inv.Preview(res.Sig, res.Hostname, res.Addr)
+		go meta.capture(o.Device.MgmtAddress) // grab descriptions for the new device
 		if err := inv.Add(o); err != nil {
 			render(w, "detect-error", map[string]string{"Err": "Could not save device: " + err.Error()})
 			return

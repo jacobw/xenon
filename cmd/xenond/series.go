@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"xenon/internal/metrics"
+	"xenon/internal/probe"
 )
 
 // metricOption is one entry in the interface drill-down's metric selector.
@@ -29,9 +30,17 @@ type graphView struct {
 	DataURL  string
 }
 
+// descFor returns the description for an interface or BGP-neighbour key.
+func descFor(group, key string, meta probe.Meta) string {
+	if group == "bgp" {
+		return meta.BGP[key]
+	}
+	return meta.Interfaces[key]
+}
+
 // buildGraphView assembles the drill-down shell for a metric (normalising the
 // legacy m=port to throughput) and, for interface graphs, the metric selector.
-func buildGraphView(id, m, iface, r string) (graphView, bool) {
+func buildGraphView(id, m, iface, r string, meta probe.Meta) (graphView, bool) {
 	if m == "port" {
 		m = "throughput"
 	}
@@ -44,10 +53,14 @@ func buildGraphView(id, m, iface, r string) (graphView, bool) {
 	}
 	title := spec.Label
 	if iface != "" {
-		if spec.Group != "" { // entity-first: "ge-0/0/0 · Throughput", "192.0.2.1 · Prefixes"
-			title = iface + " · " + spec.Label
+		entity := iface
+		if desc := descFor(spec.Group, iface, meta); desc != "" {
+			entity = iface + " (" + desc + ")"
+		}
+		if spec.Group != "" { // entity-first: "ge-0/0/0 (uplink) · Throughput"
+			title = entity + " · " + spec.Label
 		} else { // metric-first: "Rx power · Xcvr0", "Temperature · sensor"
-			title = spec.Label + " · " + iface
+			title = spec.Label + " · " + entity
 		}
 	}
 	gv := graphView{ID: id, Title: title, Metric: m, Iface: iface, Range: r, Unit: spec.Unit, Ranges: graphRanges}
