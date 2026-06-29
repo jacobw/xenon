@@ -44,6 +44,10 @@ data:
         # and must be refreshed each interval or it expires from the scrape output.
         stream-mode: sample
         sample-interval: 30s
+      network-instances_network-instance_protocols_protocol_bgp_neighbors_neighborneighbor-address_afi-safis_afi-safiafi-safi-name_state_prefixes:
+        paths: ["/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor[neighbor-address=*]/afi-safis/afi-safi[afi-safi-name=*]/state/prefixes"]
+        stream-mode: sample
+        sample-interval: 30s
       junos_system_linecard_qmon-sw_queue_state:
         paths: ["/junos/system/linecard/qmon-sw/queue/state"]
         stream-mode: sample

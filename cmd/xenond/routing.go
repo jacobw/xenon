@@ -14,11 +14,17 @@ type bgpPeer struct {
 	PeerAS      string
 	State       string // ESTABLISHED / ACTIVE / IDLE / …
 	StateClass  string // ok | warn | bad
+	PfxRecv     string // prefixes received (summed over afi-safis)
+	PfxSent     string // prefixes sent
 	Transitions string // established-transitions (flap count)
 }
 
-// bgpBase is the (long) metric-name prefix for OpenConfig BGP neighbour state.
-const bgpBase = "network_instances_network_instance_protocols_protocol_bgp_neighbors_neighbor_state_"
+// bgpBase / pfxBase are the (long) metric-name prefixes for OpenConfig BGP
+// neighbour state and per-afi-safi prefix counts.
+const (
+	bgpBase = "network_instances_network_instance_protocols_protocol_bgp_neighbors_neighbor_state_"
+	pfxBase = "network_instances_network_instance_protocols_protocol_bgp_neighbors_neighbor_afi_safis_afi_safi_state_prefixes_"
+)
 
 // bgpStateClass colours a BGP session state: established = good, idle = down,
 // in-between (active/connect/opensent/openconfirm) = warning.
@@ -38,6 +44,18 @@ func bgpStateClass(s string) string {
 func buildRouting(mc *metrics.Client, source string) []bgpPeer {
 	peerAS := mc.VectorBy(fmt.Sprintf(bgpBase+`peer_as{source=%q}`, source), "neighbor_neighbor_address")
 	trans := mc.VectorBy(fmt.Sprintf(bgpBase+`established_transitions{source=%q}`, source), "neighbor_neighbor_address")
+	// Prefix COUNTS only (a gauge per neighbour) — summed across afi-safis. The
+	// actual prefixes (the RIB) are deliberately NOT in Prometheus: per-route series
+	// would be a cardinality blow-up and a TSDB is the wrong store for a route table.
+	recv := mc.VectorBy(fmt.Sprintf(`sum by (neighbor_neighbor_address)(`+pfxBase+`received{source=%q})`, source), "neighbor_neighbor_address")
+	sent := mc.VectorBy(fmt.Sprintf(`sum by (neighbor_neighbor_address)(`+pfxBase+`sent{source=%q})`, source), "neighbor_neighbor_address")
+
+	pfx := func(m map[string]float64, nb string) string {
+		if v, ok := m[nb]; ok {
+			return fmt.Sprintf("%.0f", v)
+		}
+		return "—"
+	}
 
 	var peers []bgpPeer
 	for _, l := range mc.VectorFull(fmt.Sprintf(bgpBase+`session_state{source=%q}`, source)) {
@@ -50,6 +68,8 @@ func buildRouting(mc *metrics.Client, source string) []bgpPeer {
 			Network:    l.Labels["network_instance_name"],
 			State:      l.Labels["session_state"],
 			StateClass: bgpStateClass(l.Labels["session_state"]),
+			PfxRecv:    pfx(recv, nb),
+			PfxSent:    pfx(sent, nb),
 		}
 		if v, ok := peerAS[nb]; ok {
 			p.PeerAS = fmt.Sprintf("%.0f", v)
