@@ -62,6 +62,15 @@
   .rbtn:hover{color:var(--fg)}
   .rbtn.on{background:var(--accent);color:#04122e;border-color:var(--accent);font-weight:600}
   .bigchart .spark{height:220px;background:#0b0d12;border:1px solid var(--line);border-radius:6px}
+  .metricsel{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .mbtn{cursor:pointer;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:4px 11px}
+  .mbtn:hover{color:var(--fg)}
+  .mbtn.on{background:#1c2029;color:var(--fg);border-color:var(--accent);font-weight:600}
+  .uplot-host{width:100%;background:#0b0d12;border:1px solid var(--line);border-radius:6px;padding:6px}
+  .u-legend{color:var(--fg);font-size:12px}
+  .u-legend .u-marker{border-radius:2px}
+  .u-legend th{color:var(--mut)}
+  .u-select{background:rgba(91,157,255,.15)}
   .nav{display:flex;gap:4px;margin-left:8px}
   .nav a{color:var(--mut);font-size:13px;padding:4px 10px;border-radius:6px}
   .nav a:hover{color:var(--fg);background:#1c2029;text-decoration:none}
@@ -82,6 +91,50 @@
   .sw{width:11px;height:11px;border-radius:2px;display:inline-block}
 </style>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.min.css">
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
+<script>
+// Format a value for a unit (tooltip + y-axis).
+function xfmt(v, unit){
+  if(v==null||isNaN(v)) return '–';
+  if(unit==='bps'){var u=['bps','Kbps','Mbps','Gbps','Tbps'],i=0;while(Math.abs(v)>=1000&&i<u.length-1){v/=1000;i++;}return v.toFixed(1)+' '+u[i];}
+  if(unit==='pps') return v.toFixed(0)+' pps';
+  if(unit==='%') return v.toFixed(1)+' %';
+  if(unit==='°C') return v.toFixed(1)+' °C';
+  if(unit==='dBm') return v.toFixed(2)+' dBm';
+  if(unit==='GB') return v.toFixed(2)+' GB';
+  if(unit==='mA') return v.toFixed(1)+' mA';
+  if(unit==='/s') return v.toFixed(3)+'/s';
+  return (+v).toFixed(2);
+}
+// Render every drill-down chart container (data-chart) found under root. uPlot
+// gives drag-to-zoom (double-click resets) and a live hover legend (time + value).
+function xRenderCharts(root){
+  if(typeof uPlot==='undefined') return;
+  (root||document).querySelectorAll('[data-chart]').forEach(function(el){
+    if(el._rendered) return; el._rendered=true;
+    var unit=el.dataset.unit||'';
+    fetch(el.dataset.url).then(function(r){return r.json();}).then(function(d){
+      if(!d.times||!d.times.length){el.innerHTML='<div class="mut" style="padding:24px 8px">No data in this range yet — Prometheus may need more history.</div>';return;}
+      var data=[d.times].concat(d.values);
+      var series=[{}].concat((d.series||[]).map(function(nm,i){
+        return {label:nm,stroke:(d.colors||[])[i]||'#5b9dff',width:1.6,value:function(u,v){return xfmt(v,unit);}};
+      }));
+      var opts={width:el.clientWidth||820,height:240,
+        series:series,
+        scales:{x:{time:true}},
+        axes:[{stroke:'#8b93a3',grid:{stroke:'#1c2029'},ticks:{stroke:'#262b36'}},
+              {stroke:'#8b93a3',grid:{stroke:'#1c2029'},ticks:{stroke:'#262b36'},size:64,values:function(u,vals){return vals.map(function(v){return xfmt(v,unit);});}}],
+        cursor:{points:{size:6}},legend:{live:true}};
+      el.innerHTML='';
+      var u=new uPlot(opts,data,el);
+      if(window.ResizeObserver){new ResizeObserver(function(){u.setSize({width:el.clientWidth,height:240});}).observe(el);}
+    }).catch(function(){el.innerHTML='<div class="mut" style="padding:24px 8px">Chart failed to load.</div>';});
+  });
+}
+document.addEventListener('DOMContentLoaded',function(){xRenderCharts();});
+document.addEventListener('htmx:afterSwap',function(e){xRenderCharts(e.target);});
+</script>
 </head>
 <body>
 <header><span class="logo">xenon</span><nav class="nav"><a href="/">Overview</a><a href="/devices">Devices</a><a href="/explore">Explore</a><a href="/alarms">Alarms</a><a href="/admin">Admin</a></nav><span class="tag" style="margin-left:auto">gNMI / OpenConfig monitoring · prototype</span></header>

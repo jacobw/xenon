@@ -206,12 +206,29 @@ func main() {
 			return
 		}
 		q := r.URL.Query()
-		gd, ok := buildGraphDetail(mc, o.Device.ID, o.Device.MgmtAddress, q.Get("m"), q.Get("iface"), q.Get("r"))
+		gv, ok := buildGraphView(o.Device.ID, q.Get("m"), q.Get("iface"), q.Get("r"))
 		if !ok {
 			render(w, "graph-empty", nil)
 			return
 		}
-		render(w, "graph-detail", gd)
+		render(w, "graph-chart", gv)
+	})
+
+	// series JSON for the client-side (uPlot) drill-down charts
+	mux.HandleFunc("GET /device/{id}/series", func(w http.ResponseWriter, r *http.Request) {
+		o, ok := inv.Get(r.PathValue("id"))
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		q := r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		sd, ok := buildSeriesData(mc, o.Device.MgmtAddress, q.Get("m"), q.Get("iface"), q.Get("r"))
+		if !ok {
+			_, _ = w.Write([]byte(`{"times":[],"values":[]}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(sd)
 	})
 
 	// fleet-wide graph drill-down (HTMX)

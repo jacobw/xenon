@@ -48,6 +48,55 @@ func (c *Client) RangeQuery(promql string, dur, step time.Duration) ([]float64, 
 	return vals, len(vals) > 0
 }
 
+// RangePoints runs a query_range and returns the first series as aligned
+// (unix-second timestamp, value) slices — for client-side charts that need a real
+// time axis (uPlot). Empty when no data.
+func (c *Client) RangePoints(promql string, dur, step time.Duration) ([]int64, []float64) {
+	if !c.Enabled() {
+		return nil, nil
+	}
+	now := time.Now()
+	q := url.Values{}
+	q.Set("query", promql)
+	q.Set("start", strconv.FormatInt(now.Add(-dur).Unix(), 10))
+	q.Set("end", strconv.FormatInt(now.Unix(), 10))
+	q.Set("step", strconv.Itoa(int(step.Seconds())))
+
+	resp, err := c.hc.Get(c.base + "/api/v1/query_range?" + q.Encode())
+	if err != nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	var mr struct {
+		Data struct {
+			Result []struct {
+				Values [][2]any `json:"values"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&mr) != nil || len(mr.Data.Result) == 0 {
+		return nil, nil
+	}
+	pts := mr.Data.Result[0].Values
+	ts := make([]int64, 0, len(pts))
+	vals := make([]float64, 0, len(pts))
+	for _, p := range pts {
+		t, ok := p[0].(float64)
+		s, ok2 := p[1].(string)
+		if !ok || !ok2 {
+			continue
+		}
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			continue
+		}
+		ts = append(ts, int64(t))
+		vals = append(vals, f)
+	}
+	return ts, vals
+}
+
 // VectorBy runs an instant query and returns a map of the given label's value →
 // sample value (e.g. interface_name → rate). Used for the ports table.
 func (c *Client) VectorBy(promql, label string) map[string]float64 {

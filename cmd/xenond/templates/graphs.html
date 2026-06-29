@@ -25,3 +25,22 @@
 {{define "graph-empty"}}
 <div class="card drill-card mut">No data for this graph in the selected range yet — Prometheus may need more history.</div>
 {{end}}
+
+{{define "graph-chart"}}
+<div class="card drill-card">
+  <div class="drill-top">
+    <span class="drill-title">{{.Title}}</span>
+    <span class="ranges">
+      {{$v := .}}{{range .Ranges}}<a class="rbtn{{if eq . $v.Range}} on{{end}}" hx-get="/device/{{$v.ID}}/graph?m={{$v.Metric}}&iface={{$v.Iface | urlquery}}&r={{.}}" hx-target="#drill" hx-swap="innerHTML">{{.}}</a>{{end}}
+      <a class="rbtn" onclick="document.getElementById('drill').innerHTML='';return false">✕</a>
+    </span>
+  </div>
+  {{if .Selector}}
+  <div class="metricsel">
+    {{$v := .}}{{range .Selector}}<a class="mbtn{{if .On}} on{{end}}" hx-get="/device/{{$v.ID}}/graph?m={{.Key}}&iface={{$v.Iface | urlquery}}&r={{$v.Range}}" hx-target="#drill" hx-swap="innerHTML">{{.Label}}</a>{{end}}
+  </div>
+  {{end}}
+  <div class="uplot-host" data-chart data-url="{{.DataURL}}" data-unit="{{.Unit}}"></div>
+  <div class="mut" style="margin-top:8px;font-size:12px">Drag to zoom · double-click to reset · hover for exact values &amp; time.</div>
+</div>
+{{end}}
