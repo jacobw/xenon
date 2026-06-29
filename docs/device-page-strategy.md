@@ -104,13 +104,16 @@ container, and Junos streams whole containers, so it needs its own subscription.
 5. ✅ **Health — component status (v0.1.15)** — `/components/component/state` gives
    oper-status (PSU/cards/FRU: ACTIVE/DISABLED) + inventory. sw1 exposes **no fans /
    PSU-electrical** via OC, so component status + temperature is the hw-health view.
-6. **Link speed (recoverable, not yet done)** — `high_speed` expired only because
-   it's a *sync-only sibling* of the `/state/counters` sub; **directly-subscribed
-   `/state` is re-sent each sample** (confirmed). Fix = widen the interface sub to
-   `/interfaces/interface[name=*]/state` (carries speed + admin-status), mind the
-   added cardinality. (Supersedes the earlier "separate output" idea.)
-7. **Neighbours + Inventory** — LLDP topology; the hardware/serial inventory data is
-   now already collected via the component `/state` sub (just needs a tab).
+6. ✅ **Inventory (v0.1.16)** — hardware modules (part / serial / rev / description)
+   from the component `/state` inventory leaves (strings-as-labels); 18 modules on
+   sw1 incl PSU / cards / FRUs / transceivers.
+7. **Link speed (DEFERRED — confirmed not viable in scrape model)** — widening the
+   interface sub to full `/state` was tried (v0.1.16) and **reverted**: Junos
+   suppresses *unchanged* leaves in the interface `/state` periodic samples, so
+   idle-interface counters AND static `high_speed` stop being re-sent. (The
+   "/state re-sends each sample" rule held for the smaller *component* `/state` sub,
+   not interfaces.) Would need per-leaf heartbeat tuning or a different path.
+8. **LLDP neighbours** — topology (the remaining LibreNMS device-page section).
 
 Sources: [LibreNMS device page (NSRC lab)](https://nsrc.org/workshops/2016/rwnog-nmm/netmgmt/en/librenms/librenms-lab-1.htm),
 [Health Information](https://docs.librenms.org/Developing/os/Health-Information/),
