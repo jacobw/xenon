@@ -86,6 +86,7 @@ type deviceData struct {
 	Optics     []optic
 	Routing    []bgpPeer
 	Health     []graph
+	Components []component
 	Alarms     []alarms.Alarm
 	IfCount    int
 	AlarmCount int
@@ -176,6 +177,7 @@ func main() {
 			dd.Routing = buildRouting(mc, src)
 		case "health":
 			dd.Health = buildHealth(mc, src)
+			dd.Components = buildComponents(mc, src)
 		case "alarms":
 			dd.Alarms = alarmStore.ForDevice(o.Device.Hostname)
 		case "config":

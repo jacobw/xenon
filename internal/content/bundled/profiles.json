@@ -103,6 +103,13 @@
         "interval_sec": 30,
         "group": "routing",
         "est_series": 18
+      },
+      {
+        "path": "/components/component[name=*]/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 60
       }
     ]
   },
@@ -167,6 +174,13 @@
         "interval_sec": 30,
         "group": "routing",
         "est_series": 18
+      },
+      {
+        "path": "/components/component[name=*]/state",
+        "mode": "sample",
+        "interval_sec": 60,
+        "group": "base",
+        "est_series": 60
       }
     ]
   }

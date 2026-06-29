@@ -294,6 +294,53 @@ func buildOptics(mc *metrics.Client, source string) []optic {
 	return out
 }
 
+// component is one chassis-level hardware component (PSU, card, FRU) with its
+// operational status, for the Health tab.
+type component struct {
+	Type   string
+	Name   string
+	Status string
+	Class  string // ok | warn | bad
+}
+
+func componentStatusClass(s string) string {
+	switch s {
+	case "ACTIVE", "ENABLED":
+		return "ok"
+	case "DISABLED", "INACTIVE", "STANDBY":
+		return "warn" // usually an unused/standby slot, not a fault
+	default:
+		return "bad"
+	}
+}
+
+// buildComponents lists chassis-level components (power supplies, cards, FRUs) and
+// their oper-status. Ports/transceivers are excluded — they have their own tabs.
+func buildComponents(mc *metrics.Client, source string) []component {
+	typ := map[string]string{}
+	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_type{source=%q}`, source)) {
+		typ[l.Labels["component_name"]] = l.Labels["type"]
+	}
+	seen := map[string]bool{}
+	var out []component
+	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_oper_status{source=%q}`, source)) {
+		n := l.Labels["component_name"]
+		t := typ[n]
+		if n == "" || seen[n] || t == "PORT" || t == "TRANSCEIVER" {
+			continue
+		}
+		seen[n] = true
+		out = append(out, component{Type: t, Name: n, Status: l.Labels["oper_status"], Class: componentStatusClass(l.Labels["oper_status"])})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Type != out[j].Type {
+			return out[i].Type < out[j].Type
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
 // ---- drill-down detail ----
 
 var graphRanges = []string{"1h", "6h", "24h", "7d"}

@@ -34,6 +34,12 @@ data:
         paths: ["/components/component[name=*]/state/temperature"]
         stream-mode: sample
         sample-interval: 60s
+      components_componentname_state:
+        # Component health (oper-status, via strings-as-labels) + hardware
+        # inventory (serial/part/mfg). Re-sent each sample, so it persists.
+        paths: ["/components/component[name=*]/state"]
+        stream-mode: sample
+        sample-interval: 60s
       components_componentname_transceiver_state:
         paths: ["/components/component[name=*]/transceiver/state"]
         stream-mode: sample

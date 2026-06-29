@@ -110,11 +110,23 @@
   {{else}}<p class="mut">No BGP neighbours — this device has no BGP sessions, or routing isn't collected for its profile.</p>{{end}}
 
 {{else if eq .Tab "health"}}
+  {{if .Components}}
+  <h2>Components</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Component</th><th>Status</th></tr></thead>
+    <tbody>
+    {{range .Components}}
+    <tr><td class="mono mut">{{.Type}}</td><td class="mono">{{.Name}}</td><td><span class="pill {{.Class}}">{{.Status}}</span></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
   {{if .Health}}
+  <h2>Sensors</h2>
   <div class="graphs">
     {{range .Health}}{{template "panel" (dict "ID" $id "G" . "Wide" false)}}{{end}}
   </div>
-  {{else}}<p class="mut">No sensor metrics available.</p>{{end}}
+  {{else if not .Components}}<p class="mut">No sensor metrics available.</p>{{end}}
 
 {{else if eq .Tab "alarms"}}
   {{if .Alarms}}
