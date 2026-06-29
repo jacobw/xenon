@@ -17,6 +17,7 @@
   <a class="tab {{if eq .Tab "optics"}}on{{end}}" href="/device/{{$id}}?tab=optics">Optics</a>
   <a class="tab {{if eq .Tab "routing"}}on{{end}}" href="/device/{{$id}}?tab=routing">Routing</a>
   <a class="tab {{if eq .Tab "health"}}on{{end}}" href="/device/{{$id}}?tab=health">Health</a>
+  <a class="tab {{if eq .Tab "inventory"}}on{{end}}" href="/device/{{$id}}?tab=inventory">Inventory</a>
   <a class="tab {{if eq .Tab "alarms"}}on{{end}}" href="/device/{{$id}}?tab=alarms">Alarms</a>
   <a class="tab {{if eq .Tab "config"}}on{{end}}" href="/device/{{$id}}?tab=config">Config</a>
 </nav>
@@ -54,12 +55,13 @@
 {{else if eq .Tab "ports"}}
   {{if .Ports}}
   <table>
-    <thead><tr><th>Status</th><th>Interface</th><th>Traffic <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">In</th><th style="text-align:right">Out</th><th style="text-align:right">Errors</th></tr></thead>
+    <thead><tr><th>Status</th><th>Interface</th><th style="text-align:right">Speed</th><th>Traffic <span class="mut">↓/↑ · 15m</span></th><th style="text-align:right">In</th><th style="text-align:right">Out</th><th style="text-align:right">Errors</th></tr></thead>
     <tbody>
     {{range .Ports}}
     <tr class="clickable" hx-get="/device/{{$id}}/graph?m=port&iface={{.Name | urlquery}}&r=1h" hx-target="#drill" hx-swap="innerHTML">
       <td>{{if .Status}}<span class="pill {{.StatusClass}}">{{.Status}}</span>{{else}}<span class="mut">—</span>{{end}}</td>
       <td class="mono">{{.Name}}</td>
+      <td style="text-align:right" class="mono mut">{{.Speed}}</td>
       <td>{{with .SVG}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
       <td style="text-align:right" class="mono">{{.In}}</td><td style="text-align:right" class="mono">{{.Out}}</td>
       <td style="text-align:right" class="mono {{if .ErrClass}}lvl-bad{{else}}mut{{end}}">{{.Err}}</td>
@@ -127,6 +129,26 @@
     {{range .Health}}{{template "panel" (dict "ID" $id "G" . "Wide" false)}}{{end}}
   </div>
   {{else if not .Components}}<p class="mut">No sensor metrics available.</p>{{end}}
+
+{{else if eq .Tab "inventory"}}
+  {{if .Inventory}}
+  <table>
+    <thead><tr><th>Component</th><th>Type</th><th>Part No</th><th>Serial No</th><th>Rev</th><th>Description</th></tr></thead>
+    <tbody>
+    {{range .Inventory}}
+    <tr>
+      <td class="mono">{{.Name}}</td>
+      <td class="mono mut">{{.Type}}</td>
+      <td class="mono">{{with .Part}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
+      <td class="mono">{{with .Serial}}{{.}}{{else}}<span class="mut">—</span>{{end}}</td>
+      <td class="mono mut">{{with .Rev}}{{.}}{{else}}—{{end}}</td>
+      <td class="mut">{{.Desc}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  <p class="mut" style="margin-top:8px">Hardware modules from OpenConfig <span class="mono">/components</span> (serial / part / revision). The gNMI equivalent of an entity-physical inventory.</p>
+  {{else}}<p class="mut">No hardware inventory collected yet.</p>{{end}}
 
 {{else if eq .Tab "alarms"}}
   {{if .Alarms}}

@@ -3,20 +3,6 @@
     "id": "openconfig.base",
     "subscriptions": [
       {
-        "path": "/interfaces/interface[name=*]/state/counters",
-        "mode": "sample",
-        "interval_sec": 30,
-        "group": "base",
-        "est_series": 1000
-      },
-      {
-        "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "sample",
-        "group": "base",
-        "est_series": 100,
-        "interval_sec": 30
-      },
-      {
         "path": "/system/cpus/cpu[index=*]/state",
         "mode": "sample",
         "interval_sec": 60,
@@ -36,26 +22,22 @@
         "interval_sec": 60,
         "group": "base",
         "est_series": 60
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 460,
+        "drop": [
+          "out-queue"
+        ]
       }
     ]
   },
   {
     "id": "juniper.mx304",
     "subscriptions": [
-      {
-        "path": "/interfaces/interface[name=*]/state/counters",
-        "mode": "sample",
-        "interval_sec": 30,
-        "group": "base",
-        "est_series": 1000
-      },
-      {
-        "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "sample",
-        "group": "base",
-        "est_series": 100,
-        "interval_sec": 30
-      },
       {
         "path": "/system/cpus/cpu[index=*]/state",
         "mode": "sample",
@@ -110,29 +92,22 @@
         "interval_sec": 60,
         "group": "base",
         "est_series": 60
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 460,
+        "drop": [
+          "out-queue"
+        ]
       }
     ]
   },
   {
     "id": "juniper.ex4100",
     "subscriptions": [
-      {
-        "path": "/interfaces/interface[name=*]/state/counters",
-        "mode": "sample",
-        "interval_sec": 30,
-        "group": "base",
-        "est_series": 384,
-        "drop": [
-          "out-queue"
-        ]
-      },
-      {
-        "path": "/interfaces/interface[name=*]/state/oper-status",
-        "mode": "sample",
-        "group": "base",
-        "est_series": 39,
-        "interval_sec": 30
-      },
       {
         "path": "/system/cpus/cpu[index=*]/state",
         "mode": "sample",
@@ -181,6 +156,16 @@
         "interval_sec": 60,
         "group": "base",
         "est_series": 60
+      },
+      {
+        "path": "/interfaces/interface[name=*]/state",
+        "mode": "sample",
+        "interval_sec": 30,
+        "group": "base",
+        "est_series": 460,
+        "drop": [
+          "out-queue"
+        ]
       }
     ]
   }

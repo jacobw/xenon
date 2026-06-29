@@ -87,6 +87,7 @@ type deviceData struct {
 	Routing    []bgpPeer
 	Health     []graph
 	Components []component
+	Inventory  []invItem
 	Alarms     []alarms.Alarm
 	IfCount    int
 	AlarmCount int
@@ -175,6 +176,8 @@ func main() {
 			dd.Optics = buildOptics(mc, src)
 		case "routing":
 			dd.Routing = buildRouting(mc, src)
+		case "inventory":
+			dd.Inventory = buildInventory(mc, src)
 		case "health":
 			dd.Health = buildHealth(mc, src)
 			dd.Components = buildComponents(mc, src)
