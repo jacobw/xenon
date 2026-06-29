@@ -44,17 +44,15 @@ func buildGraphView(id, m, iface, r string) (graphView, bool) {
 	}
 	title := spec.Label
 	if iface != "" {
-		if spec.Group == "iface" {
+		if spec.Group != "" { // entity-first: "ge-0/0/0 · Throughput", "192.0.2.1 · Prefixes"
 			title = iface + " · " + spec.Label
-		} else {
+		} else { // metric-first: "Rx power · Xcvr0", "Temperature · sensor"
 			title = spec.Label + " · " + iface
 		}
 	}
 	gv := graphView{ID: id, Title: title, Metric: m, Iface: iface, Range: r, Unit: spec.Unit, Ranges: graphRanges}
-	if spec.Group == "iface" {
-		for _, k := range ifaceGraphOrder {
-			gv.Selector = append(gv.Selector, metricOption{Key: k, Label: graphSpecs[k].Label, On: k == m})
-		}
+	for _, k := range selectorOrder[spec.Group] {
+		gv.Selector = append(gv.Selector, metricOption{Key: k, Label: graphSpecs[k].Label, On: k == m})
 	}
 	gv.DataURL = fmt.Sprintf("/device/%s/series?m=%s&iface=%s&r=%s", id, m, url.QueryEscape(iface), url.QueryEscape(r))
 	return gv, true
@@ -96,6 +94,25 @@ func ifErrSum(dir string) func(string, string) string {
 // ifaceGraphOrder is the metric selector for the interface drill-down, in order.
 var ifaceGraphOrder = []string{"throughput", "packets", "errors", "unicast"}
 
+// bgpGraphOrder is the metric selector for the BGP-neighbour drill-down.
+var bgpGraphOrder = []string{"bgp_prefixes", "bgp_accepted", "bgp_installed", "bgp_flaps"}
+
+// selectorOrder maps a graph group to its in-order selector keys.
+var selectorOrder = map[string][]string{"iface": ifaceGraphOrder, "bgp": bgpGraphOrder}
+
+// bgpPfx queries an afi-safi prefix count (summed over afi-safis) for a neighbour;
+// bgpState queries a neighbour/state counter. iface carries neighbor_neighbor_address.
+func bgpPfx(leaf string) func(string, string) string {
+	return func(s, nb string) string {
+		return fmt.Sprintf(`sum(network_instances_network_instance_protocols_protocol_bgp_neighbors_neighbor_afi_safis_afi_safi_state_prefixes_%s{source=%q,neighbor_neighbor_address=%q})`, leaf, s, nb)
+	}
+}
+func bgpState(leaf string) func(string, string) string {
+	return func(s, nb string) string {
+		return fmt.Sprintf(`sum(network_instances_network_instance_protocols_protocol_bgp_neighbors_neighbor_state_%s{source=%q,neighbor_neighbor_address=%q})`, leaf, s, nb)
+	}
+}
+
 // graphSpecs is the drill-down registry, shared by the series endpoint. Device
 // graphs are device-wide; iface graphs need an interface and form a selectable set.
 var graphSpecs = map[string]graphSpec{
@@ -135,6 +152,20 @@ var graphSpecs = map[string]graphSpec{
 	}},
 	"unicast": {"Unicast packets", "pps", true, "iface", []seriesSpec{
 		{"In", "#a371f7", ifRate("in_unicast_pkts")}, {"Out", "#f778ba", ifRate("out_unicast_pkts")},
+	}},
+
+	// per-BGP-neighbour, selectable group (iface carries neighbor_neighbor_address)
+	"bgp_prefixes": {"Prefixes", "count", true, "bgp", []seriesSpec{
+		{"Received", "#3fb950", bgpPfx("received")}, {"Advertised", "#a371f7", bgpPfx("sent")},
+	}},
+	"bgp_accepted": {"Accepted", "count", true, "bgp", []seriesSpec{
+		{"Received", "#a371f7", bgpPfx("received")}, {"Accepted", "#3fb950", bgpPfx("accepted")},
+	}},
+	"bgp_installed": {"Installed", "count", true, "bgp", []seriesSpec{
+		{"Installed", "#5b9dff", bgpPfx("installed")},
+	}},
+	"bgp_flaps": {"Flaps", "count", true, "bgp", []seriesSpec{
+		{"Transitions", "#d29922", bgpState("established_transitions")},
 	}},
 }
 

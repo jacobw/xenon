@@ -96,7 +96,7 @@
     <thead><tr><th>Neighbor</th><th>VRF</th><th style="text-align:right">Peer AS</th><th>State</th><th style="text-align:right">Prefixes <span class="mut">rx/tx</span></th><th style="text-align:right">Flaps</th></tr></thead>
     <tbody>
     {{range .Routing}}
-    <tr>
+    <tr class="clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML">
       <td class="mono">{{.Neighbor}}</td>
       <td class="mono mut">{{.Network}}</td>
       <td style="text-align:right" class="mono">{{.PeerAS}}</td>

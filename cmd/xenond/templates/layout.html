@@ -105,6 +105,7 @@ function xfmt(v, unit){
   if(unit==='GB') return v.toFixed(2)+' GB';
   if(unit==='mA') return v.toFixed(1)+' mA';
   if(unit==='/s') return v.toFixed(3)+'/s';
+  if(unit==='count') return Math.round(v).toLocaleString();
   return (+v).toFixed(2);
 }
 // Render every drill-down chart container (data-chart) found under root. uPlot
