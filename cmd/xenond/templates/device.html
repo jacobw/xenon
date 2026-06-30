@@ -26,54 +26,59 @@
 
 {{if eq .Tab "overview"}}
   {{$s := .Summary}}
-  <div class="tiles">
-    <a class="tile" href="/device/{{$id}}?tab=ports"><div class="tile-v {{if $s.PortsDown}}lvl-warn{{end}}">{{$s.PortsUp}}<span class="mut" style="font-size:15px">/{{$s.PortsTotal}}</span></div><div class="tile-l">Ports up</div></a>
-    <a class="tile" href="/device/{{$id}}?tab=health"><div class="tile-v {{if lt $s.SubsOK (len $s.Subs)}}lvl-bad{{end}}">{{$s.SubsOK}}<span class="mut" style="font-size:15px">/{{len $s.Subs}}</span></div><div class="tile-l">Subsystems ok</div></a>
-    {{if $s.Optics}}<a class="tile" href="/device/{{$id}}?tab=optics"><div class="tile-v">{{len $s.Optics}}</div><div class="tile-l">Optics</div></a>{{end}}
-    {{if $s.BGP}}<a class="tile" href="/device/{{$id}}?tab=routing"><div class="tile-v {{if lt $s.BGPUp (len $s.BGP)}}lvl-warn{{end}}">{{$s.BGPUp}}<span class="mut" style="font-size:15px">/{{len $s.BGP}}</span></div><div class="tile-l">BGP up</div></a>{{end}}
-    <a class="tile" href="/device/{{$id}}?tab=alarms"><div class="tile-v {{if .AlarmCount}}lvl-bad{{end}}">{{.AlarmCount}}</div><div class="tile-l">Alarms</div></a>
-    <div class="tile"><div class="tile-v">{{if .Metrics.Reachable}}{{.Metrics.Series}}{{else}}—{{end}}</div><div class="tile-l">Series</div></div>
-  </div>
+  <div class="panels">
 
-  {{if .Graphs}}<div class="graphs sm">{{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" false)}}{{end}}</div>
-  {{else if not .Metrics.Reachable}}<div class="card mut" style="margin-top:12px">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</div>{{end}}
-
-  <div class="widgets">
-    <div class="card">
-      <h3>Identity</h3>
-      <dl class="kv" style="grid-template-columns:74px 1fr">
-        <dt>Status</dt><dd><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></dd>
+    <div class="panel col2">
+      <div class="panel-head"><span class="panel-title">Device</span><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></div>
+      <dl class="kv" style="grid-template-columns:84px 1fr">
         <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
         <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
         <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
         <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
       </dl>
+      <div class="vitals">
+        <a href="/device/{{$id}}?tab=ports"><span class="v-n {{if $s.PortsDown}}lvl-warn{{end}}">{{$s.PortsUp}}/{{$s.PortsTotal}}</span><span class="v-l">Ports up</span></a>
+        <a href="/device/{{$id}}?tab=health"><span class="v-n {{if lt $s.SubsOK (len $s.Subs)}}lvl-bad{{end}}">{{$s.SubsOK}}/{{len $s.Subs}}</span><span class="v-l">Subsystems</span></a>
+        {{if $s.BGP}}<a href="/device/{{$id}}?tab=routing"><span class="v-n {{if lt $s.BGPUp (len $s.BGP)}}lvl-warn{{end}}">{{$s.BGPUp}}/{{len $s.BGP}}</span><span class="v-l">BGP up</span></a>{{end}}
+        <a href="/device/{{$id}}?tab=alarms"><span class="v-n {{if .AlarmCount}}lvl-bad{{end}}">{{.AlarmCount}}</span><span class="v-l">Alarms</span></a>
+        <div><span class="v-n">{{if .Metrics.Reachable}}{{.Metrics.Series}}{{else}}—{{end}}</span><span class="v-l">Series</span></div>
+      </div>
     </div>
+
+    {{range .Graphs}}
+    <div class="panel panel-graph" hx-get="/device/{{$id}}/graph?m={{.Key}}&r=24h" hx-target="#drill" hx-swap="innerHTML">
+      <div class="panel-head"><span class="panel-title">{{.Title}}</span><span class="panel-stat">{{.Cur}}</span></div>
+      {{.SVG}}
+    </div>
+    {{end}}
+
     {{if $s.Sensors}}
-    <div class="card">
-      <h3><a href="/device/{{$id}}?tab=health">Sensors</a></h3>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Sensors</a></span></div>
       {{range $s.Sensors}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=temp&iface={{.Name | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="mono lvl-{{.Class}}">{{.Value}}</span></div>{{end}}
     </div>
     {{end}}
     {{if $s.Subs}}
-    <div class="card">
-      <h3><a href="/device/{{$id}}?tab=health">Subsystems</a></h3>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Subsystems</a></span><span class="panel-stat mut">{{$s.SubsOK}} ok</span></div>
       {{range $s.Subs}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=comp_state&iface={{.Name | urlquery}}&r=7d" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="pill {{.Class}}">{{.Status}}</span></div>{{end}}
     </div>
     {{end}}
     {{if $s.BGP}}
-    <div class="card">
-      <h3><a href="/device/{{$id}}?tab=routing">BGP</a> <span class="mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></h3>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=routing">BGP</a></span><span class="panel-stat mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></div>
       {{range $s.BGP}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Neighbor}}{{if .Desc}} <span class="mut">{{.Desc}}</span>{{end}}</span><span class="pill {{.StateClass}}">{{.State}}</span></div>{{end}}
     </div>
     {{end}}
     {{if $s.Optics}}
-    <div class="card">
-      <h3><a href="/device/{{$id}}?tab=optics">Optics</a></h3>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=optics">Optics</a></span></div>
       {{range $s.Optics}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=optic_rx&iface={{.Port | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Port}}</span><span class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</span></div>{{end}}
     </div>
     {{end}}
+
   </div>
+  {{if not .Metrics.Reachable}}<p class="mut" style="margin-top:12px">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
 
 {{else if eq .Tab "ports"}}
   {{if .Ports}}
