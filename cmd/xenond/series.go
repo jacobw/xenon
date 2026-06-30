@@ -153,6 +153,12 @@ var graphSpecs = map[string]graphSpec{
 	"optic_tx":   {"Tx power", "dBm", true, "", []seriesSpec{{"Tx", "#a371f7", func(s, c string) string { return fmt.Sprintf(`components_component_transceiver_state_output_power_instant{source=%q,component_name=%q}`, s, c) }}}},
 	"optic_bias": {"Laser bias", "mA", true, "", []seriesSpec{{"Bias", "#d29922", func(s, c string) string { return fmt.Sprintf(`components_component_transceiver_state_laser_bias_current_instant{source=%q,component_name=%q}`, s, c) }}}},
 
+	// component operational-state history (numeric encode: 2=active, 1=disabled,
+	// 0=fault) — shows WHEN a subsystem's state changed.
+	"comp_state": {"Operational state", "state", true, "", []seriesSpec{{"State", "#5b9dff", func(s, c string) string {
+		return fmt.Sprintf(`2*components_component_state_oper_status{source=%q,component_name=%q,oper_status="ACTIVE"} or 1*components_component_state_oper_status{source=%q,component_name=%q,oper_status="DISABLED"} or 0*components_component_state_oper_status{source=%q,component_name=%q}`, s, c, s, c, s, c)
+	}}}},
+
 	// per-interface, selectable group
 	"throughput": {"Throughput", "bps", true, "iface", []seriesSpec{
 		{"In", "#a371f7", ifBits("in_octets")}, {"Out", "#f778ba", ifBits("out_octets")},

@@ -25,32 +25,46 @@
 <div id="drill"></div>
 
 {{if eq .Tab "overview"}}
-  <div class="cards" style="margin-bottom:16px">
+  {{$s := .Summary}}
+  <div class="tiles">
+    <a class="tile" href="/device/{{$id}}?tab=ports"><div class="tile-v {{if $s.PortsDown}}lvl-warn{{end}}">{{$s.PortsUp}}<span class="mut" style="font-size:15px">/{{$s.PortsTotal}}</span></div><div class="tile-l">Ports up</div></a>
+    <a class="tile" href="/device/{{$id}}?tab=health"><div class="tile-v {{if lt $s.SubsOK $s.SubsTotal}}lvl-bad{{end}}">{{$s.SubsOK}}<span class="mut" style="font-size:15px">/{{$s.SubsTotal}}</span></div><div class="tile-l">Subsystems ok</div></a>
+    {{if $s.OpticsLit}}<a class="tile" href="/device/{{$id}}?tab=optics"><div class="tile-v">{{$s.OpticsLit}}</div><div class="tile-l">Optics lit</div></a>{{end}}
+    {{if $s.BGPTotal}}<a class="tile" href="/device/{{$id}}?tab=routing"><div class="tile-v {{if lt $s.BGPUp $s.BGPTotal}}lvl-warn{{end}}">{{$s.BGPUp}}<span class="mut" style="font-size:15px">/{{$s.BGPTotal}}</span></div><div class="tile-l">BGP established</div></a>{{end}}
+    <a class="tile" href="/device/{{$id}}?tab=alarms"><div class="tile-v {{if .AlarmCount}}lvl-bad{{end}}">{{.AlarmCount}}</div><div class="tile-l">Active alarms</div></a>
+    <div class="tile"><div class="tile-v">{{if .Metrics.Reachable}}{{.Metrics.Series}}{{else}}—{{end}}</div><div class="tile-l">Live series</div></div>
+  </div>
+
+  {{if $s.Attention}}
+  <h2>Needs attention</h2>
+  <table>
+    <tbody>
+    {{range $s.Attention}}
+    <tr><td style="width:1%"><span class="pill {{.Sev}}">!</span></td><td>{{.Text}}</td><td style="text-align:right"><a class="mut" href="/device/{{$id}}?tab={{.Tab}}">{{.Tab}} →</a></td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else if .Metrics.Reachable}}<p class="mut" style="margin:10px 0 0">✓ No issues — all subsystems, optics and sessions healthy.</p>{{end}}
+
+  {{if .Graphs}}
+  <h2>Graphs</h2>
+  <div class="graphs">
+    {{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" .Wide)}}{{end}}
+  </div>
+  {{else}}<p class="mut" style="margin-top:14px">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
+
+  <h2>Device</h2>
+  <div class="cards">
     <div class="card">
-      <h3>Device</h3>
+      <h3>Identity</h3>
       <dl class="kv">
-        <dt>Status</dt><dd><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></dd>
         <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
         <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
         <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
         <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
       </dl>
     </div>
-    <div class="card">
-      <h3>At a glance</h3>
-      <dl class="kv">
-        <dt>Interfaces</dt><dd><span class="big">{{if .IfCount}}{{.IfCount}}{{else}}—{{end}}</span></dd>
-        <dt>Alarms</dt><dd>{{if .AlarmCount}}<span class="big">{{.AlarmCount}}</span> <a class="mut" href="/device/{{$id}}?tab=alarms">active</a>{{else}}<span class="mut">none active</span>{{end}}</dd>
-        <dt>Series</dt><dd>{{if .Metrics.Reachable}}<span class="big">{{.Metrics.Series}}</span> <span class="mut">live · {{.Dev.EstSeries}} planned</span>{{else}}<span class="big">{{.Dev.EstSeries}}</span> <span class="mut">planned</span>{{end}}</dd>
-      </dl>
-    </div>
   </div>
-
-  {{if .Graphs}}
-  <div class="graphs">
-    {{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" .Wide)}}{{end}}
-  </div>
-  {{else}}<p class="mut">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</p>{{end}}
 
 {{else if eq .Tab "ports"}}
   {{if .Ports}}
@@ -112,12 +126,12 @@
 
 {{else if eq .Tab "health"}}
   {{if .Components}}
-  <h2>Subsystems <span class="mut">· power · cooling · cards</span></h2>
+  <h2>Subsystems <span class="mut">· power · cooling · cards · click for state history</span></h2>
   <table>
     <thead><tr><th>Type</th><th>Component</th><th>Status</th></tr></thead>
     <tbody>
     {{range .Components}}
-    <tr><td class="mono mut">{{.Type}}</td><td class="mono">{{.Name}}</td><td><span class="pill {{.Class}}">{{.Status}}</span></td></tr>
+    <tr class="clickable" hx-get="/device/{{$id}}/graph?m=comp_state&iface={{.Name | urlquery}}&r=7d" hx-target="#drill" hx-swap="innerHTML"><td class="mono mut">{{.Type}}</td><td class="mono">{{.Name}}</td><td><span class="pill {{.Class}}">{{.Status}}</span></td></tr>
     {{end}}
     </tbody>
   </table>

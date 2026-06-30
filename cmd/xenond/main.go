@@ -9,7 +9,6 @@ package main
 import (
 	"embed"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -91,6 +90,7 @@ type deviceData struct {
 	Alarms     []alarms.Alarm
 	IfCount    int
 	AlarmCount int
+	Summary    deviceSummary
 	ConfigJSON string
 }
 
@@ -192,9 +192,7 @@ func main() {
 			dd.Tab = "overview"
 			dd.Metrics = mc.ForDevice(src)
 			dd.Graphs = buildGraphs(mc, src)
-			if n, ok := mc.Scalar(fmt.Sprintf(`count(interfaces_interface_state_counters_in_octets{source=%q})`, src)); ok {
-				dd.IfCount = int(n)
-			}
+			dd.Summary = buildDeviceSummary(mc, src, meta.get(src))
 			dd.AlarmCount = len(alarmStore.ForDevice(o.Device.Hostname))
 		}
 		render(w, "device", dd)

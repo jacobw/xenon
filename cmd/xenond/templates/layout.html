@@ -78,6 +78,7 @@
   .tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
   .tile-v{font-size:26px;font-weight:700}
   .tile-l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  a.tile:hover{border-color:var(--accent);text-decoration:none}
   .pill.mut{background:#262b36;color:var(--mut)}
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:6px 0 18px}
   .tab{padding:8px 14px;color:var(--mut);font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px}
@@ -106,6 +107,7 @@ function xfmt(v, unit){
   if(unit==='mA') return v.toFixed(1)+' mA';
   if(unit==='/s') return v.toFixed(3)+'/s';
   if(unit==='count') return Math.round(v).toLocaleString();
+  if(unit==='state') return v>=2?'Active':(v>=1?'Disabled':'Fault');
   return (+v).toFixed(2);
 }
 // Render every drill-down chart container (data-chart) found under root. uPlot
