@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"xenon/internal/alarms"
 	"xenon/internal/metrics"
 	"xenon/internal/probe"
 )
@@ -15,34 +16,32 @@ type attn struct {
 }
 
 // deviceSummary is the at-a-glance roll-up for the device overview: per-subsystem
-// counts plus a consolidated list of what currently needs attention.
+// counts, the underlying lists (so widgets render compactly without re-querying),
+// and a consolidated list of what currently needs attention.
 type deviceSummary struct {
 	PortsUp, PortsDown int
-	SubsOK, SubsTotal  int
-	OpticsLit          int
-	BGPUp, BGPTotal    int
+	SubsOK             int
+	Subs               []component
+	Optics             []optic
+	BGP                []bgpPeer
+	BGPUp              int
 	Attention          []attn
 }
 
 func (s deviceSummary) PortsTotal() int { return s.PortsUp + s.PortsDown }
 
-func (s deviceSummary) SubsClass() string {
-	if s.SubsOK < s.SubsTotal {
-		return "bad"
-	}
-	return "ok"
-}
-func (s deviceSummary) BGPClass() string {
-	if s.BGPTotal > 0 && s.BGPUp < s.BGPTotal {
-		return "warn"
-	}
-	return "ok"
-}
-
-// buildDeviceSummary rolls up ports, subsystems, optics and BGP into counts + a
-// prioritised attention list, reusing the per-tab builders.
-func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta) deviceSummary {
+// buildDeviceSummary rolls up alarms, ports, subsystems, optics and BGP into the
+// overview's counts, lists and prioritised attention feed.
+func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta, active []alarms.Alarm) deviceSummary {
 	s := deviceSummary{}
+
+	for _, a := range active { // alarms first — highest priority
+		sev := "warn"
+		if a.Severity == "critical" {
+			sev = "bad"
+		}
+		s.Attention = append(s.Attention, attn{sev, "alarms", a.Summary})
+	}
 
 	for _, l := range mc.VectorFull(fmt.Sprintf(`interfaces_interface_state_oper_status{source=%q}`, source)) {
 		if !isPhysicalPort(l.Labels["interface_name"]) {
@@ -55,8 +54,8 @@ func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta) devi
 		}
 	}
 
-	for _, c := range buildComponents(mc, source) {
-		s.SubsTotal++
+	s.Subs = buildComponents(mc, source)
+	for _, c := range s.Subs {
 		if c.Class == "ok" {
 			s.SubsOK++
 		} else {
@@ -64,17 +63,15 @@ func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta) devi
 		}
 	}
 
-	for _, o := range buildOptics(mc, source) {
-		if o.HasRx {
-			s.OpticsLit++
-		}
+	s.Optics = buildOptics(mc, source)
+	for _, o := range s.Optics {
 		if o.RxClass == "warn" || o.RxClass == "bad" {
 			s.Attention = append(s.Attention, attn{o.RxClass, "optics", "Optic " + o.Port + " — Rx " + o.Rx})
 		}
 	}
 
-	for _, p := range buildRouting(mc, source, meta) {
-		s.BGPTotal++
+	s.BGP = buildRouting(mc, source, meta)
+	for _, p := range s.BGP {
 		if p.State == "ESTABLISHED" {
 			s.BGPUp++
 		} else {
