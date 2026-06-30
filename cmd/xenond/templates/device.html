@@ -26,61 +26,67 @@
 
 {{if eq .Tab "overview"}}
   {{$s := .Summary}}
-  <div class="panels">
+  <div class="ov2">
 
-    {{range .Graphs}}
-    <div class="panel panel-graph" hx-get="/device/{{$id}}/graph?m={{.Key}}&r=24h" hx-target="#drill" hx-swap="innerHTML">
-      <div class="panel-head"><span class="panel-title">{{.Title}}</span><span class="panel-stat">{{.Cur}}</span></div>
-      {{.SVG}}
-    </div>
-    {{end}}
+    <div class="ov2-main">
+      <div class="panels">
+        {{range .Graphs}}
+        <div class="panel panel-graph" hx-get="/device/{{$id}}/graph?m={{.Key}}&r=24h" hx-target="#drill" hx-swap="innerHTML">
+          <div class="panel-head"><span class="panel-title">{{.Title}}</span><span class="panel-stat">{{.Cur}}</span></div>
+          {{.SVG}}
+        </div>
+        {{end}}
 
-    {{if .Alarms}}
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=alarms">Alarms</a></span><span class="panel-stat lvl-bad">{{.AlarmCount}} active</span></div>
-      {{range .Alarms}}<div class="wrow"><span>{{.Summary}}</span><span class="pill {{sevClass .Severity}}">{{.Severity}}</span></div>{{end}}
-    </div>
-    {{end}}
+        {{if .Alarms}}
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=alarms">Alarms</a></span><span class="panel-stat lvl-bad">{{.AlarmCount}} active</span></div>
+          {{range .Alarms}}<div class="wrow"><span>{{.Summary}}</span><span class="pill {{sevClass .Severity}}">{{.Severity}}</span></div>{{end}}
+        </div>
+        {{end}}
 
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=ports">Ports</a></span><span class="panel-stat {{if $s.PortsDown}}lvl-warn{{end}}">{{$s.PortsUp}}/{{$s.PortsTotal}} up</span></div>
-      {{if $s.DownPorts}}{{range $s.DownPorts}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=throughput&iface={{. | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.}}</span><span class="pill bad">DOWN</span></div>{{end}}
-      {{else}}<div class="mut" style="font-size:12.5px;padding:4px 2px">All physical ports up.</div>{{end}}
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=ports">Ports</a></span><span class="panel-stat {{if $s.PortsDown}}lvl-warn{{end}}">{{$s.PortsUp}}/{{$s.PortsTotal}} up</span></div>
+          {{if $s.DownPorts}}{{range $s.DownPorts}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=throughput&iface={{. | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.}}</span><span class="pill bad">DOWN</span></div>{{end}}
+          {{else}}<div class="mut" style="font-size:12.5px;padding:4px 2px">All physical ports up.</div>{{end}}
+        </div>
+
+        {{if $s.Subs}}
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Subsystems</a></span><span class="panel-stat mut">{{$s.SubsOK}} ok</span></div>
+          {{range $s.Subs}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=comp_state&iface={{.Name | urlquery}}&r=7d" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="pill {{.Class}}">{{.Status}}</span></div>{{end}}
+        </div>
+        {{end}}
+        {{if $s.BGP}}
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=routing">BGP</a></span><span class="panel-stat mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></div>
+          {{range $s.BGP}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Neighbor}}{{if .Desc}} <span class="mut">{{.Desc}}</span>{{end}}</span><span class="pill {{.StateClass}}">{{.State}}</span></div>{{end}}
+        </div>
+        {{end}}
+      </div>
     </div>
 
-    {{if $s.Sensors}}
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Sensors</a></span></div>
-      {{range $s.Sensors}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=temp&iface={{.Name | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="mono lvl-{{.Class}}">{{.Value}}</span></div>{{end}}
-    </div>
-    {{end}}
-    {{if $s.Subs}}
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Subsystems</a></span><span class="panel-stat mut">{{$s.SubsOK}} ok</span></div>
-      {{range $s.Subs}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=comp_state&iface={{.Name | urlquery}}&r=7d" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="pill {{.Class}}">{{.Status}}</span></div>{{end}}
-    </div>
-    {{end}}
-    {{if $s.BGP}}
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=routing">BGP</a></span><span class="panel-stat mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></div>
-      {{range $s.BGP}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Neighbor}}{{if .Desc}} <span class="mut">{{.Desc}}</span>{{end}}</span><span class="pill {{.StateClass}}">{{.State}}</span></div>{{end}}
-    </div>
-    {{end}}
-    {{if $s.Optics}}
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=optics">Optics</a></span></div>
-      {{range $s.Optics}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=optic_rx&iface={{.Port | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Port}}</span><span class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</span></div>{{end}}
-    </div>
-    {{end}}
-
-    <div class="panel">
-      <div class="panel-head"><span class="panel-title">Device</span></div>
-      <dl class="kv" style="grid-template-columns:62px 1fr;font-size:12.5px">
-        <dt>Serial</dt><dd class="mono">{{with $s.Serial}}{{.}}{{else}}<span class="mut">—</span>{{end}}</dd>
-        <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
-        <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
-        <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
-      </dl>
+    <div class="ov2-side">
+      {{if $s.Sensors}}
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=health">Sensors</a></span><span class="panel-stat mut">{{len $s.Sensors}}</span></div>
+        {{range $s.Sensors}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=temp&iface={{.Name | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="mono lvl-{{.Class}}">{{.Value}}</span></div>{{end}}
+      </div>
+      {{end}}
+      {{if $s.Optics}}
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title"><a href="/device/{{$id}}?tab=optics">Optics</a></span></div>
+        {{range $s.Optics}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=optic_rx&iface={{.Port | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Port}}</span><span class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</span></div>{{end}}
+      </div>
+      {{end}}
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Device</span></div>
+        <dl class="kv" style="grid-template-columns:62px 1fr;font-size:12.5px">
+          <dt>Serial</dt><dd class="mono">{{with $s.Serial}}{{.}}{{else}}<span class="mut">—</span>{{end}}</dd>
+          <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
+          <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
+          <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
+        </dl>
+      </div>
     </div>
 
   </div>
