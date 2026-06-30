@@ -192,9 +192,8 @@ func main() {
 			dd.Tab = "overview"
 			dd.Metrics = mc.ForDevice(src)
 			dd.Graphs = buildGraphs(mc, src)
-			active := alarmStore.ForDevice(o.Device.Hostname)
-			dd.AlarmCount = len(active)
-			dd.Summary = buildDeviceSummary(mc, src, meta.get(src), active)
+			dd.AlarmCount = len(alarmStore.ForDevice(o.Device.Hostname))
+			dd.Summary = buildDeviceSummary(mc, src, meta.get(src))
 		}
 		render(w, "device", dd)
 	})

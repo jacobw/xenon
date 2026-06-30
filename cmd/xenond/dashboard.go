@@ -137,14 +137,14 @@ func lineGraph(mc *metrics.Client, source, key string) (graph, bool) {
 	return graph{Key: key, Title: spec.title, Cur: spec.format(vals[len(vals)-1]), SVG: chart.Line(vals, graphW, graphH, spec.color)}, true
 }
 
-// buildGraphs is the Overview tab: an overall-traffic headline plus CPU/memory/
-// temperature tiles. Every tile is drill-down clickable.
+// buildGraphs is the Overview tab's small metric row: traffic + CPU + memory
+// sparklines (temperature lives in the Sensors widget). Each is drill-down clickable.
 func buildGraphs(mc *metrics.Client, source string) []graph {
 	var gs []graph
-	if g, ok := trafficGraph(mc, source, detailW, 120, true); ok {
+	if g, ok := trafficGraph(mc, source, graphW, graphH, false); ok {
 		gs = append(gs, g)
 	}
-	for _, k := range []string{"cpu", "mem", "temp"} {
+	for _, k := range []string{"cpu", "mem"} {
 		if g, ok := lineGraph(mc, source, k); ok {
 			gs = append(gs, g)
 		}
@@ -319,14 +319,15 @@ var failableComponentTypes = map[string]bool{
 }
 
 // componentStatusClass maps an OpenConfig component oper-status to a health class,
-// mirroring the jnxFruState mapping: active=ok, disabled/empty=warn (absent or
-// unpowered — worth a look, not a hard fault), anything else=critical.
+// mirroring LibreNMS's jnxFruState generic codes: active/ready=ok (green),
+// disabled/standby/empty=grey (present-but-not-active — NOT an alert), and only a
+// true fault (offline/inactive) is critical (red).
 func componentStatusClass(s string) string {
 	switch s {
-	case "ACTIVE", "ENABLED":
+	case "ACTIVE", "ENABLED", "READY":
 		return "ok"
-	case "DISABLED", "STANDBY", "INACTIVE":
-		return "warn"
+	case "DISABLED", "STANDBY", "EMPTY", "UNKNOWN":
+		return "mut"
 	default:
 		return "bad"
 	}

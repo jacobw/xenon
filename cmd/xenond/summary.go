@@ -2,46 +2,49 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
-	"xenon/internal/alarms"
 	"xenon/internal/metrics"
 	"xenon/internal/probe"
 )
 
-// attn is one "needs attention" item on the device overview.
-type attn struct {
-	Sev  string // warn | bad
-	Tab  string // tab to link to
-	Text string
+// sensorRow is one environmental sensor (temperature) for the overview Sensors
+// widget — value coloured by threshold, drillable to its history.
+type sensorRow struct {
+	Name  string
+	Value string
+	Class string // ok | warn | bad
 }
 
 // deviceSummary is the at-a-glance roll-up for the device overview: per-subsystem
-// counts, the underlying lists (so widgets render compactly without re-querying),
-// and a consolidated list of what currently needs attention.
+// counts plus the underlying lists, so each widget renders compact, coloured and
+// drillable without re-querying. No separate "attention" list — the colour is the
+// signal (LibreNMS model).
 type deviceSummary struct {
 	PortsUp, PortsDown int
 	SubsOK             int
 	Subs               []component
+	Sensors            []sensorRow
 	Optics             []optic
 	BGP                []bgpPeer
 	BGPUp              int
-	Attention          []attn
 }
 
 func (s deviceSummary) PortsTotal() int { return s.PortsUp + s.PortsDown }
 
-// buildDeviceSummary rolls up alarms, ports, subsystems, optics and BGP into the
-// overview's counts, lists and prioritised attention feed.
-func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta, active []alarms.Alarm) deviceSummary {
-	s := deviceSummary{}
-
-	for _, a := range active { // alarms first — highest priority
-		sev := "warn"
-		if a.Severity == "critical" {
-			sev = "bad"
-		}
-		s.Attention = append(s.Attention, attn{sev, "alarms", a.Summary})
+func tempClass(c float64) string {
+	switch {
+	case c >= 68:
+		return "bad"
+	case c >= 55:
+		return "warn"
+	default:
+		return "ok"
 	}
+}
+
+func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta) deviceSummary {
+	s := deviceSummary{}
 
 	for _, l := range mc.VectorFull(fmt.Sprintf(`interfaces_interface_state_oper_status{source=%q}`, source)) {
 		if !isPhysicalPort(l.Labels["interface_name"]) {
@@ -56,32 +59,28 @@ func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta, acti
 
 	s.Subs = buildComponents(mc, source)
 	for _, c := range s.Subs {
-		if c.Class == "ok" {
+		if c.Class != "bad" { // a disabled/standby slot is not a fault
 			s.SubsOK++
-		} else {
-			s.Attention = append(s.Attention, attn{c.Class, "health", c.Type + " " + c.Name + " — " + c.Status})
 		}
 	}
 
-	s.Optics = buildOptics(mc, source)
-	for _, o := range s.Optics {
-		if o.RxClass == "warn" || o.RxClass == "bad" {
-			s.Attention = append(s.Attention, attn{o.RxClass, "optics", "Optic " + o.Port + " — Rx " + o.Rx})
-		}
+	temps := mc.VectorBy(fmt.Sprintf(`components_component_state_temperature_instant{source=%q}`, source), "component_name")
+	names := make([]string, 0, len(temps))
+	for n := range temps {
+		names = append(names, n)
 	}
+	sort.Strings(names)
+	for _, n := range names {
+		s.Sensors = append(s.Sensors, sensorRow{n, cFmt(temps[n]), tempClass(temps[n])})
+	}
+
+	s.Optics = buildOptics(mc, source)
 
 	s.BGP = buildRouting(mc, source, meta)
 	for _, p := range s.BGP {
 		if p.State == "ESTABLISHED" {
 			s.BGPUp++
-		} else {
-			label := p.Neighbor
-			if p.Desc != "" {
-				label += " (" + p.Desc + ")"
-			}
-			s.Attention = append(s.Attention, attn{"warn", "routing", "BGP " + label + " — " + p.State})
 		}
 	}
-
 	return s
 }

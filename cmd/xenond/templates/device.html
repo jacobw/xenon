@@ -35,48 +35,44 @@
     <div class="tile"><div class="tile-v">{{if .Metrics.Reachable}}{{.Metrics.Series}}{{else}}—{{end}}</div><div class="tile-l">Series</div></div>
   </div>
 
-  <div class="ov">
-    <div class="ov-main">
-      {{if $s.Attention}}
-      <div class="card attn">
-        <h3>Needs attention <span class="mut">· {{len $s.Attention}}</span></h3>
-        {{range $s.Attention}}<div class="attn-row"><span class="dot {{.Sev}}"></span><span class="grow">{{.Text}}</span><a class="mut" href="/device/{{$id}}?tab={{.Tab}}">{{.Tab}} →</a></div>{{end}}
-      </div>
-      {{else if .Metrics.Reachable}}<div class="card mut">✓ No issues — all subsystems, optics and sessions healthy.</div>{{end}}
-      {{if .Graphs}}<div class="graphs">{{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" .Wide)}}{{end}}</div>
-      {{else}}<div class="card mut">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</div>{{end}}
-    </div>
+  {{if .Graphs}}<div class="graphs sm">{{range .Graphs}}{{template "panel" (dict "ID" $id "G" . "Wide" false)}}{{end}}</div>
+  {{else if not .Metrics.Reachable}}<div class="card mut" style="margin-top:12px">No live metrics — the collector / Prometheus isn't running, or the device is unreachable.</div>{{end}}
 
-    <div class="ov-side">
-      <div class="card">
-        <h3>Identity</h3>
-        <dl class="kv" style="grid-template-columns:74px 1fr">
-          <dt>Status</dt><dd><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></dd>
-          <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
-          <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
-          <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
-          <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
-        </dl>
-      </div>
-      {{if $s.Subs}}
-      <div class="card">
-        <h3><a href="/device/{{$id}}?tab=health">Subsystems</a></h3>
-        {{range $s.Subs}}<div class="wrow"><span class="mono">{{.Name}}</span><span class="pill {{.Class}}">{{.Status}}</span></div>{{end}}
-      </div>
-      {{end}}
-      {{if $s.BGP}}
-      <div class="card">
-        <h3><a href="/device/{{$id}}?tab=routing">BGP</a> <span class="mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></h3>
-        {{range $s.BGP}}<div class="wrow"><span class="mono">{{.Neighbor}}{{if .Desc}} <span class="mut">{{.Desc}}</span>{{end}}</span><span class="pill {{.StateClass}}">{{.State}}</span></div>{{end}}
-      </div>
-      {{end}}
-      {{if $s.Optics}}
-      <div class="card">
-        <h3><a href="/device/{{$id}}?tab=optics">Optics</a></h3>
-        {{range $s.Optics}}<div class="wrow"><span class="mono">{{.Port}}</span><span class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</span></div>{{end}}
-      </div>
-      {{end}}
+  <div class="widgets">
+    <div class="card">
+      <h3>Identity</h3>
+      <dl class="kv" style="grid-template-columns:74px 1fr">
+        <dt>Status</dt><dd><span class="pill {{.Op.Class}}">{{.Op.Label}}</span></dd>
+        <dt>Platform</dt><dd class="mono">{{.Dev.Device.Platform.Vendor}}/{{.Dev.Device.Platform.Family}}/{{.Dev.Device.Platform.Model}}</dd>
+        <dt>OS</dt><dd class="mono">{{.Dev.Signature.OS}} {{.Dev.Signature.Version}}</dd>
+        <dt>Mgmt</dt><dd class="mono">{{.Dev.Device.MgmtAddress}}</dd>
+        <dt>Tags</dt><dd class="mono">{{range $k,$v := .Dev.Device.Tags}}{{$k}}={{$v}} {{else}}<span class="mut">none</span>{{end}}</dd>
+      </dl>
     </div>
+    {{if $s.Sensors}}
+    <div class="card">
+      <h3><a href="/device/{{$id}}?tab=health">Sensors</a></h3>
+      {{range $s.Sensors}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=temp&iface={{.Name | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="mono lvl-{{.Class}}">{{.Value}}</span></div>{{end}}
+    </div>
+    {{end}}
+    {{if $s.Subs}}
+    <div class="card">
+      <h3><a href="/device/{{$id}}?tab=health">Subsystems</a></h3>
+      {{range $s.Subs}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=comp_state&iface={{.Name | urlquery}}&r=7d" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Name}}</span><span class="pill {{.Class}}">{{.Status}}</span></div>{{end}}
+    </div>
+    {{end}}
+    {{if $s.BGP}}
+    <div class="card">
+      <h3><a href="/device/{{$id}}?tab=routing">BGP</a> <span class="mut">{{$s.BGPUp}}/{{len $s.BGP}} up</span></h3>
+      {{range $s.BGP}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=bgp_prefixes&iface={{.Neighbor | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Neighbor}}{{if .Desc}} <span class="mut">{{.Desc}}</span>{{end}}</span><span class="pill {{.StateClass}}">{{.State}}</span></div>{{end}}
+    </div>
+    {{end}}
+    {{if $s.Optics}}
+    <div class="card">
+      <h3><a href="/device/{{$id}}?tab=optics">Optics</a></h3>
+      {{range $s.Optics}}<div class="wrow clickable" hx-get="/device/{{$id}}/graph?m=optic_rx&iface={{.Port | urlquery}}&r=24h" hx-target="#drill" hx-swap="innerHTML"><span class="mono">{{.Port}}</span><span class="mono {{if .HasRx}}lvl-{{.RxClass}}{{end}}">{{.Rx}}</span></div>{{end}}
+    </div>
+    {{end}}
   </div>
 
 {{else if eq .Tab "ports"}}
