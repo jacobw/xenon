@@ -22,6 +22,8 @@ type sensorRow struct {
 // signal (LibreNMS model).
 type deviceSummary struct {
 	PortsUp, PortsDown int
+	DownPorts          []string // physical ports currently down
+	Serial             string   // chassis serial
 	SubsOK             int
 	Subs               []component
 	Sensors            []sensorRow
@@ -47,13 +49,27 @@ func buildDeviceSummary(mc *metrics.Client, source string, meta probe.Meta) devi
 	s := deviceSummary{}
 
 	for _, l := range mc.VectorFull(fmt.Sprintf(`interfaces_interface_state_oper_status{source=%q}`, source)) {
-		if !isPhysicalPort(l.Labels["interface_name"]) {
+		n := l.Labels["interface_name"]
+		if !isPhysicalPort(n) {
 			continue
 		}
 		if l.Labels["oper_status"] == "UP" {
 			s.PortsUp++
 		} else {
 			s.PortsDown++
+			s.DownPorts = append(s.DownPorts, n)
+		}
+	}
+	sort.Strings(s.DownPorts)
+
+	types := map[string]string{}
+	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_type{source=%q}`, source)) {
+		types[l.Labels["component_name"]] = l.Labels["type"]
+	}
+	for _, l := range mc.VectorFull(fmt.Sprintf(`components_component_state_serial_no{source=%q}`, source)) {
+		if types[l.Labels["component_name"]] == "CHASSIS" {
+			s.Serial = l.Labels["serial_no"]
+			break
 		}
 	}
 
